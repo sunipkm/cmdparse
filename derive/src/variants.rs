@@ -90,7 +90,7 @@ impl<'a> VariantsSet<'a> {
         })
     }
 
-    pub(crate) fn transparent_variants(&self) -> impl Iterator<Item = TransparentVariantView> {
+    pub(crate) fn transparent_variants(&self) -> impl Iterator<Item = TransparentVariantView<'_>> {
         self.transparent.iter().map(|(index, no_error)| {
             let fields = &self.fieldsets[*index];
             TransparentVariantView {

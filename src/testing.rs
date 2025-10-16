@@ -66,22 +66,3 @@ macro_rules! test_parse {
 }
 
 pub use test_parse;
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! test_complete {
-    ($name:ident, $type:ty, $input:literal => { consumed: $consumed:expr, remaining: $remaining:expr, suggestions: [$($suggestion:expr),*] $(,)?}) => {
-        #[test]
-        #[allow(clippy::bool_assert_comparison)]
-        fn $name() {
-            let parser = <$type as $crate::Parsable<()>>::Parser::default();
-            let stream = $crate::tokens::TokenStream::new($input);
-            let result = $crate::Parser::<()>::complete(&parser, stream, ());
-            assert_eq!(result.suggestions, ::std::collections::BTreeSet::from([$($suggestion.into()),*]));
-            assert_eq!(result.value_consumed, $consumed);
-            assert_eq!(result.remaining.map(|input| input.peek().transpose().unwrap()), $remaining);
-        }
-    };
-}
-
-pub use test_complete;

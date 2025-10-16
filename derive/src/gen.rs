@@ -107,7 +107,6 @@ pub(crate) fn implementation(
     type_name: &syn::Ident,
     ctx: &CodegenContext,
     parse_impl: TokenStream,
-    complete_impl: TokenStream,
 ) -> TokenStream {
     let parser_name = format_ident!("{}Parser", type_name);
 
@@ -135,16 +134,6 @@ pub(crate) fn implementation(
             ) -> ::cmdparse::ParseResult<'a, Self::Value> {
                 #parsers_initialization
                 #parse_impl
-            }
-
-            #[allow(unreachable_code)]
-            fn complete<'a>(
-                &self,
-                mut input: ::cmdparse::tokens::TokenStream<'a>,
-                ctx: #ctx_generic,
-            ) -> ::cmdparse::CompletionResult<'a> {
-                #parsers_initialization
-                #complete_impl
             }
         }
 
@@ -356,7 +345,6 @@ mod tests {
                 &format_ident!("NoFields"),
                 &ctx,
                 quote! {parse!()},
-                quote! {complete!()},
             );
 
             let expected = quote! {
@@ -368,8 +356,6 @@ mod tests {
 
                     #[allow(unreachable_code)]
                     fn parse<'a>(&self, mut input: ::cmdparse::tokens::TokenStream<'a>, ctx: CmdParserCtx,) -> ::cmdparse::ParseResult<'a, Self::Value> { parse!() }
-                    #[allow(unreachable_code)]
-                    fn complete<'a>(&self, mut input: ::cmdparse::tokens::TokenStream<'a>, ctx: CmdParserCtx,) -> ::cmdparse::CompletionResult<'a> { complete!() }
                 }
 
                 impl<CmdParserCtx: Clone> ::cmdparse::Parsable<CmdParserCtx> for NoFields {
@@ -397,7 +383,6 @@ mod tests {
                 &format_ident!("WithConcreteCtx"),
                 &ctx,
                 quote! {parse!()},
-                quote! {complete!()},
             );
 
             let expected = quote! {
@@ -412,12 +397,6 @@ mod tests {
                         let parser_0 = <super::Parser as Default>::default();
                         let parser_1 = <u8 as ::cmdparse::Parsable<CustomCtx>>::Parser::default();
                         parse!()
-                    }
-                    #[allow(unreachable_code)]
-                    fn complete<'a>(&self, mut input: ::cmdparse::tokens::TokenStream<'a>, ctx:CustomCtx,) -> ::cmdparse::CompletionResult<'a> {
-                        let parser_0 = <super::Parser as Default>::default();
-                        let parser_1 = <u8 as ::cmdparse::Parsable<CustomCtx>>::Parser::default();
-                        complete!()
                     }
                 }
 
@@ -455,7 +434,6 @@ mod tests {
                 &format_ident!("WithGenerics"),
                 &ctx,
                 quote! {parse!()},
-                quote! {complete!()},
             );
 
             let expected = quote! {
@@ -470,12 +448,6 @@ mod tests {
                         let parser_0 = <super::ParserA<'a, T> as Default>::default();
                         let parser_1 = <super::ParserB<'a> as Default>::default();
                         parse!()
-                    }
-                    #[allow(unreachable_code)]
-                    fn complete<'a>(&self, mut input: ::cmdparse::tokens::TokenStream<'a>, ctx: CmdParserCtx,) -> ::cmdparse::CompletionResult<'a> {
-                        let parser_0 = <super::ParserA<'a, T> as Default>::default();
-                        let parser_1 = <super::ParserB<'a> as Default>::default();
-                        complete!()
                     }
                 }
 

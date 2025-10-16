@@ -153,8 +153,6 @@ pub mod tokens;
 pub use cmdparse_derive::Parsable;
 use error::ParseError;
 use error::ParseFailure;
-use std::borrow::Cow;
-use std::collections::BTreeSet;
 use tokens::TokenStream;
 
 /// The result value returned by the individual parsers
@@ -163,80 +161,6 @@ use tokens::TokenStream;
 /// remaining tokens in the token stream, or fails with a [`ParseFailure`]. This type alias
 /// represents the return value.
 pub type ParseResult<'a, T> = Result<(T, TokenStream<'a>), ParseFailure<'a>>;
-
-/// Completion suggestions and processing metadata
-///
-/// `CompletionResult` are returned by the [`Parser::complete`] method and are used to indicate
-/// what completions the parser suggests and how other parsers should proceed with the completion
-/// process.
-///
-/// See the documentation for the [`Parser::complete`] method for more information on how values of
-/// this type should be created by the parser.
-#[derive(Debug)]
-pub struct CompletionResult<'a> {
-    /// The token stream with which the parser should continue the completion process
-    ///
-    /// If `remaining` is `None` the completion process should stop. This indicates that the last
-    /// token was encountered, suggestions for it was computed and there is no ambiguity whether
-    /// this token should be consumed by this parser or any other parser. Also, remaining is set to
-    /// `None` in case of an invalid input such that completion is not possible.
-    pub remaining: Option<TokenStream<'a>>,
-
-    /// Indicates whether at least one token was consumed by the parser
-    ///
-    /// Some parsers may behave differently whether the nested parser recognizes any token or not.
-    /// For example if `value_consumed` is `false` the parser may try to handle an attribute that
-    /// is not recognized by the inner parser but may be recognized by the current parser or the
-    /// parent one.
-    pub value_consumed: bool,
-
-    /// The set of suggestions for the last token of a stream
-    ///
-    /// Multiple inner parsers can return suggestions for the same token. Parser should combine all
-    /// of these suggestions into one set.
-    pub suggestions: BTreeSet<Cow<'static, str>>,
-}
-
-impl<'a> CompletionResult<'a> {
-    /// Creates a new `CompletionResult` that indicates that the completion process is finished.
-    ///
-    /// This constructor sets `remaining` as None, and `value_consumed` equal to the `consumed`
-    /// attribute.
-    pub fn new_final(consumed: bool) -> Self {
-        CompletionResult {
-            remaining: None,
-            value_consumed: consumed,
-            suggestions: BTreeSet::new(),
-        }
-    }
-
-    /// Creates a new `CompletionResult` that allows the continuation of the completion process.
-    ///
-    /// This constructor sets the `remaining` and `value_consumed` fields equal to the first and
-    /// second attribute respectively.
-    pub fn new(remaining: TokenStream<'a>, consumed: bool) -> Self {
-        CompletionResult {
-            remaining: Some(remaining),
-            value_consumed: consumed,
-            suggestions: BTreeSet::new(),
-        }
-    }
-
-    /// Updates the `value_consumed` status of the `CompletionResult`.
-    pub fn set_consumed(mut self, consumed: bool) -> Self {
-        self.value_consumed = consumed;
-        self
-    }
-
-    /// Extends the set of completion suggestions.
-    pub fn add_suggestions(
-        mut self,
-        suggestions: impl IntoIterator<Item = Cow<'static, str>>,
-    ) -> Self {
-        self.suggestions.extend(suggestions.into_iter());
-        self
-    }
-}
 
 /// Definition of the parsing and completion algorithm for some type
 ///
@@ -361,27 +285,6 @@ pub trait Parser<Ctx>: Default {
     ///    until a text token or an attribute that is not recognized is encountered (this is not
     ///    necessary if parser does not expect attributes)
     fn parse<'a>(&self, input: TokenStream<'a>, ctx: Ctx) -> ParseResult<'a, Self::Value>;
-
-    /// Constructs the completion suggestions for the last token of the input stream
-    ///
-    /// It returns a [`CompletionResult`] which contains a set of suggestions and metadata
-    /// instructing how the parent parser should proceed with suggestions generation. If the parser
-    /// calls multiple parsers' `complete` in a row, it should collect the results they produce.
-    ///
-    /// Note, that `complete` produces suggestions for the last token in the stream (if and
-    /// only if there are no characters following it, so only for tokens for which the remaining
-    /// stream's [`is_all_consumed`](TokenStream::is_all_consumed) returns `true`) or when the end
-    /// of stream is reached.
-    ///
-    /// Parser should return:
-    ///
-    /// | Return value                             | Scenario                                                                                                                                                                                                                                                           |
-    /// |------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-    /// | `CompletionResult::new_final(false)`     | The end of the stream is reached, or invalid punctuation is encountered, or the processes cannot continue due to input being invalid sufficiently so that it is not possible to derive its structure.                                                              |
-    /// | `CompletionResult::new_final(true)`      | The last token is reached and the entirety of the input string is consumed. Parser should include completions for this token if possible.                                                                                                                          |
-    /// | `CompletionResult::new(input, false)`    | The token is the first in the token stream and the parser does not recognize it (following the same protocol described in the documentation for [`parse`](Parser::parse) method). Parser should include completion suggestions that would make token recognizable. |
-    /// | `CompletionReuslt::new(remaining, true)` | The parser successfully consumed all tokens that are required for parsing the value. `remaining` must start with the first non-consumed token, if any. The parser should include suggestions for that non-consumed token.                                          |
-    fn complete<'a>(&self, input: TokenStream<'a>, ctx: Ctx) -> CompletionResult<'a>;
 }
 
 /// Sets the default parser for a given type
@@ -759,7 +662,10 @@ pub trait Parsable<Ctx> {
 /// # Ok(())
 /// # }
 /// ```
-pub fn parse_parser<Ctx, P: Parser<Ctx>>(input: &str, ctx: Ctx) -> Result<P::Value, ParseError> {
+pub fn parse_parser<Ctx, P: Parser<Ctx>>(
+    input: &str,
+    ctx: Ctx,
+) -> Result<P::Value, ParseError<'_>> {
     let tokens = TokenStream::new(input);
     match P::default().parse(tokens, ctx) {
         Ok((result, remaining)) => match remaining.peek() {
@@ -789,48 +695,6 @@ pub fn parse_parser<Ctx, P: Parser<Ctx>>(input: &str, ctx: Ctx) -> Result<P::Val
 /// # Ok(())
 /// # }
 /// ```
-pub fn parse<Ctx, T: Parsable<Ctx>>(input: &str, ctx: Ctx) -> Result<T, ParseError> {
+pub fn parse<Ctx, T: Parsable<Ctx>>(input: &str, ctx: Ctx) -> Result<T, ParseError<'_>> {
     parse_parser::<_, T::Parser>(input, ctx)
-}
-
-/// Computes the completion suggestions for a value using an explicit parser
-///
-/// `compute_parser` takes an input as a string slice with a parsing context and returns a set of
-/// completion suggestions for the last token in the input, if any.
-///
-/// This function is similar to [`complete`] but is expects a parser as its second generic parameter.
-/// It is intended to be used with custom parsers or for types that don’t implement [`Parsable`].
-///
-/// # Examples
-///
-/// ```
-/// use cmdparse::complete_parser;
-/// use cmdparse::parsers::BooleanParser;
-/// use std::collections::BTreeSet;
-///
-/// let suggestions = complete_parser::<_, BooleanParser>("tr", ());
-/// assert_eq!(suggestions, BTreeSet::from(["ue".into()]));
-/// ```
-pub fn complete_parser<Ctx, P: Parser<Ctx>>(input: &str, ctx: Ctx) -> BTreeSet<Cow<'static, str>> {
-    let tokens = TokenStream::new(input);
-    P::default().complete(tokens, ctx).suggestions
-}
-
-/// Computes the completion suggestiosns for a `Parsable` value
-///
-/// `compute` takes an input as a string slice with a parsing context and returns a set of
-/// completion suggestions for the last token in the input if any.
-///
-/// # Examples
-///
-/// ```
-/// use cmdparse::complete;
-/// use std::collections::BTreeSet;
-///
-/// let suggestions = complete::<_, bool>("tr", ());
-/// assert_eq!(suggestions, BTreeSet::from(["ue".into()]));
-/// ```
-pub fn complete<Ctx, T: Parsable<Ctx>>(input: &str, ctx: Ctx) -> BTreeSet<Cow<'static, str>> {
-    let tokens = TokenStream::new(input);
-    T::Parser::default().complete(tokens, ctx).suggestions
 }

@@ -1,7 +1,7 @@
 use super::lexing::{skip_ws, take_lexeme, Lexeme};
 use super::{Token, UnbalancedParenthesis};
 use crate::error::{ParseError, ParseFailure};
-use crate::{CompletionResult, ParseResult};
+use crate::ParseResult;
 
 /// Representation of the input as a sequence of tokens
 ///
@@ -130,37 +130,6 @@ impl<'a> TokenStream<'a> {
         }
     }
 
-    /// Executes a closure on an inner portion of the token stream. If the non-consumed portion of
-    /// the input stream starts with an opening parenthesis, this function attempts to skip all
-    /// tokens until the corresponding closing parenthesis. If no such parenthesis is found or if
-    /// there is no opening parenthesis, the closure is called and its execution result is
-    /// returned.
-    pub fn complete_nested<F: FnOnce(TokenStream<'a>) -> CompletionResult<'a>>(
-        &self,
-        callback: F,
-    ) -> CompletionResult<'a> {
-        let (has_parens, stream) = self.enter_nested();
-        if has_parens {
-            let mut end_stream = stream;
-            let mut paren_depth = 1;
-            while paren_depth > 0 {
-                match end_stream.next_lexeme {
-                    Some(Lexeme::OpeningParen) => paren_depth += 1,
-                    Some(Lexeme::ClosingParen) => paren_depth -= 1,
-                    Some(_) => (),
-                    None => break,
-                }
-                end_stream = end_stream.advance();
-            }
-
-            if paren_depth == 0 {
-                return CompletionResult::new(end_stream, true);
-            }
-        }
-
-        callback(stream)
-    }
-
     fn enter_nested(&self) -> (bool, TokenStream<'a>) {
         if let Some(Lexeme::OpeningParen) = self.next_lexeme {
             (true, self.advance())
@@ -190,8 +159,6 @@ mod tests {
     use super::TokenStream;
     use crate::testing::token;
     use crate::tokens::{Token, UnbalancedParenthesis};
-    use crate::CompletionResult;
-    use std::collections::BTreeSet;
 
     fn assert_takes<'a>(stream: TokenStream<'a>, expected: Token<'a>) -> TokenStream<'a> {
         let peeked = stream.peek().unwrap().unwrap();
@@ -226,8 +193,8 @@ mod tests {
             .with_nested(|stream| {
                 let stream = assert_takes(stream, token!(--"second"));
                 let stream = assert_takes(stream, token!("third"));
-                assert!(matches!(stream.peek(), None));
-                assert!(matches!(stream.take(), None));
+                assert!(stream.peek().is_none());
+                assert!(stream.take().is_none());
                 Ok((true, stream))
             })
             .unwrap();
@@ -279,26 +246,5 @@ mod tests {
             error.as_error().unwrap().to_string(),
             "unbalanced parenthesis"
         );
-    }
-
-    #[test]
-    fn completes_nested_skips_if_closed() {
-        let stream = TokenStream::new("(first (()(second))) third");
-        let result = stream.complete_nested(|_input| panic!("should not be called"));
-        assert!(result.value_consumed);
-        assert!(result.suggestions.is_empty());
-        assert_takes(result.remaining.unwrap(), token!("third"));
-    }
-
-    #[test]
-    fn completes_nested_calls_parser_if_not_closed() {
-        let stream = TokenStream::new("(first (()(second) third");
-        let result = stream.complete_nested(|input| {
-            assert_takes(input, token!("first"));
-            CompletionResult::new_final(true).add_suggestions(["abc".into()])
-        });
-        assert!(result.value_consumed);
-        assert_eq!(result.suggestions, BTreeSet::from(["abc".into()]));
-        assert!(result.remaining.is_none());
     }
 }

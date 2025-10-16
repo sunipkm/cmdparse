@@ -1,22 +1,11 @@
 use crate::error::{ParseError, UnrecognizedToken};
-use crate::tokens::{complete_variants, Token, TokenStream};
-use crate::{CompletionResult, Parsable, ParseResult, Parser};
+use crate::tokens::{Token, TokenStream};
+use crate::{Parsable, ParseResult, Parser};
 use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::marker::PhantomData;
 use std::num::{IntErrorKind, ParseIntError};
 use std::str::FromStr;
-
-fn complete_token_single(input: TokenStream<'_>) -> CompletionResult<'_> {
-    match input.take() {
-        Some(Ok((Token::Text(_), remaining))) if remaining.is_all_consumed() => {
-            CompletionResult::new_final(true)
-        }
-        Some(Ok((Token::Text(_), remaining))) => CompletionResult::new(remaining, true),
-        Some(Ok((Token::Attribute(_), _))) => CompletionResult::new(input, false),
-        Some(Err(_)) | None => CompletionResult::new_final(false),
-    }
-}
 
 macro_rules! no_state_parsable {
     ($type:ty, $parser:ident) => {
@@ -127,10 +116,6 @@ where
             Token::Attribute(_) => Err(UnrecognizedToken::new(token, remaining).into()),
         }
     }
-
-    fn complete<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> CompletionResult<'a> {
-        complete_token_single(input)
-    }
 }
 
 /// Generic parser implementation for any type that implements [`FromStr`] trait
@@ -231,10 +216,6 @@ impl<T: FromStr, Ctx> Parser<Ctx> for FromStrParser<T> {
             Token::Attribute(_) => Err(UnrecognizedToken::new(token, remaining).into()),
         }
     }
-
-    fn complete<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> CompletionResult<'a> {
-        complete_token_single(input)
-    }
 }
 
 /// Parser implementation for owned [`String`]s
@@ -270,10 +251,6 @@ impl<Ctx> Parser<Ctx> for StringParser {
             Token::Text(text) => Ok((ToString::to_string(&text.parse_string()), remaining)),
             Token::Attribute(_) => Err(UnrecognizedToken::new(token, remaining).into()),
         }
-    }
-
-    fn complete<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> CompletionResult<'a> {
-        complete_token_single(input)
     }
 }
 
@@ -322,23 +299,6 @@ impl<Ctx> Parser<Ctx> for BooleanParser {
             Token::Attribute(_) => Err(UnrecognizedToken::new(token, remaining).into()),
         }
     }
-
-    fn complete<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> CompletionResult<'a> {
-        match input.take() {
-            Some(Ok((Token::Text(text), remaining))) if remaining.is_all_consumed() => {
-                let text = text.parse_string();
-                CompletionResult::new_final(true).add_suggestions(
-                    complete_variants(&text, &["false", "no", "true", "yes"]).map(Cow::Borrowed),
-                )
-            }
-            Some(Ok((Token::Text(_), remaining))) => CompletionResult::new(remaining, true),
-            Some(Ok((Token::Attribute(_), _))) => CompletionResult::new(input, false),
-            None => {
-                CompletionResult::new_final(false).add_suggestions(["false".into(), "true".into()])
-            }
-            Some(Err(_)) => CompletionResult::new_final(false),
-        }
-    }
 }
 
 impl<Ctx> Parsable<Ctx> for bool {
@@ -349,7 +309,7 @@ impl<Ctx> Parsable<Ctx> for bool {
 mod tests {
     use super::{FromStrParser, IntegerParser};
     use crate::error::{ParseError, ParseFailure};
-    use crate::testing::{test_complete, token};
+    use crate::testing::token;
     use crate::tokens::TokenStream;
     use crate::{Parsable, Parser};
 
@@ -429,27 +389,6 @@ mod tests {
         test_parse!(parse_invalid, u16, "abc" => Err(ParseError::invalid(token!("abc"), None).expected("integer")));
         test_parse!(parse_too_large, u16, "999999999" => Err(ParseError::invalid(token!("999999999"), Some("too large".into())).expected("integer")));
         test_parse!(parse_empty_string, u16, "" => Err(ParseError::token_required().expected("integer")));
-
-        test_complete!(complete_empty_string, i16, "" => {
-            consumed: false,
-            remaining: None,
-            suggestions: [],
-        });
-        test_complete!(complete_attribute, i16, "--unknown" => {
-            consumed: false,
-            remaining: Some(Some(token!(--"unknown"))),
-            suggestions: [],
-        });
-        test_complete!(complete_last_token, i16, "abc" => {
-            consumed: true,
-            remaining: None,
-            suggestions: [],
-        });
-        test_complete!(complete_with_space, i16, "abc " => {
-            consumed: true,
-            remaining: Some(None),
-            suggestions: [],
-        });
     }
 
     mod from_str_parser {
@@ -508,29 +447,5 @@ mod tests {
         test_unrecognized_attribute!(unrecognized_attr, bool);
         test_parse!(parse_empty_string, bool, "" => Err(ParseError::token_required().expected("boolean")));
         test_parse!(parse_invalie, bool, "abc" => Err(ParseError::invalid(token!("abc"), None).expected("boolean")));
-
-        test_complete!(complete_empty_string, bool, "" => {
-            consumed: false,
-            remaining: None,
-            suggestions: ["true", "false"],
-        });
-
-        test_complete!(complete_atribute, bool, "--unknown abc" => {
-            consumed: false,
-            remaining: Some(Some(token!(--"unknown"))),
-            suggestions: [],
-        });
-
-        test_complete!(complete_f, bool, "f" => {consumed: true, remaining: None, suggestions: ["alse"]});
-        test_complete!(complete_t, bool, "t" => {consumed: true, remaining: None, suggestions: ["rue"]});
-        test_complete!(complete_y, bool, "y" => {consumed: true, remaining: None, suggestions: ["es"]});
-        test_complete!(complete_n, bool, "n" => {consumed: true, remaining: None, suggestions: ["o"]});
-        test_complete!(complete_m, bool, "m" => {consumed: true, remaining: None, suggestions: []});
-
-        test_complete!(complete_consumed, bool, "fal " => {
-            consumed: true,
-            remaining: Some(None),
-            suggestions: [],
-        });
     }
 }

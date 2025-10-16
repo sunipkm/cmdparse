@@ -1,6 +1,6 @@
 use crate::error::{ParseError, ParseFailure};
 use crate::tokens::{Token, TokenStream};
-use crate::{CompletionResult, Parsable, ParseResult, Parser};
+use crate::{Parsable, ParseResult, Parser};
 use std::cmp::Ord;
 use std::collections::{BTreeSet, HashSet, LinkedList, VecDeque};
 use std::hash::Hash;
@@ -187,35 +187,6 @@ impl<Ctx: Clone, C: ParsableCollection + Default, P: Parser<Ctx, Value = C::Item
         }
         Ok((result, input))
     }
-
-    fn complete<'a>(&self, mut input: TokenStream<'a>, ctx: Ctx) -> CompletionResult<'a> {
-        let parser = P::default();
-        let mut is_first = true;
-        let mut suggestions = BTreeSet::new();
-        while !input.is_empty() {
-            let item_result = input.complete_nested(|input| parser.complete(input, ctx.clone()));
-            if let Some(remaining) = item_result.remaining {
-                input = remaining;
-            } else {
-                return item_result.add_suggestions(suggestions);
-            }
-
-            if !item_result.value_consumed {
-                let result = if is_first {
-                    item_result
-                } else if matches!(input.peek(), Some(Ok(token)) if token.is_attribute()) {
-                    CompletionResult::new(input, true).add_suggestions(item_result.suggestions)
-                } else {
-                    CompletionResult::new_final(false).add_suggestions(item_result.suggestions)
-                };
-                return result.add_suggestions(suggestions);
-            }
-
-            suggestions.extend(item_result.suggestions);
-            is_first = false;
-        }
-        CompletionResult::new(input, true).add_suggestions(suggestions)
-    }
 }
 
 /// Parser implementation that always returns a default value of its generic argument
@@ -239,10 +210,6 @@ impl<Ctx, T: Default> Parser<Ctx> for DefaultValueParser<T> {
 
     fn parse<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> ParseResult<'a, Self::Value> {
         Ok((<T as Default>::default(), input))
-    }
-
-    fn complete<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> CompletionResult<'a> {
-        CompletionResult::new(input, true)
     }
 }
 
@@ -314,36 +281,6 @@ pub mod tuples {
                     )*
                     Ok((($param_first, $($param,)*), input))
                 }
-
-                #[allow(unused_mut)]
-                fn complete<'a>(&self, mut input: TokenStream<'a>, ctx: Ctx) -> CompletionResult<'a> {
-                    let parser = $param_first::default();
-                    let result = input.complete_nested(|input| parser.complete(input, ctx.clone()));
-                    if let Some(remaining) = result.remaining {
-                        input = remaining;
-                    } else {
-                        return result;
-                    }
-                    if !result.value_consumed {
-                        return result;
-                    }
-                    let mut suggestions = result.suggestions;
-
-                    $(
-                        let parser = $param::default();
-                        let result = input.complete_nested(|input| parser.complete(input, ctx.clone()));
-                        if let Some(remaining) = result.remaining {
-                            input = remaining;
-                        } else {
-                            return result.add_suggestions(suggestions);
-                        }
-                        if !result.value_consumed {
-                            return CompletionResult::new_final(true).add_suggestions(result.suggestions).add_suggestions(suggestions);
-                        }
-                        suggestions.extend(result.suggestions);
-                     )*
-                     CompletionResult::new(input, true).add_suggestions(suggestions)
-                }
             }
 
             impl<Ctx: Clone, $param_first: Parsable<Ctx>, $($param: Parsable<Ctx>),*> Parsable<Ctx> for ($param_first, $($param,)*) {
@@ -414,10 +351,6 @@ impl<Ctx, P: Parser<Ctx>> Parser<Ctx> for OptionParser<P> {
                 }
             }
         }
-    }
-
-    fn complete<'a>(&self, input: TokenStream<'a>, ctx: Ctx) -> CompletionResult<'a> {
-        P::default().complete(input, ctx).set_consumed(true)
     }
 }
 
@@ -556,11 +489,6 @@ where
         let transformed = <T as ParsableTransformation<O>>::transform(value)?;
         Ok((transformed, remaining))
     }
-
-    fn complete<'a>(&self, input: TokenStream<'a>, ctx: Ctx) -> CompletionResult<'a> {
-        let parser = P::default();
-        parser.complete(input, ctx)
-    }
 }
 
 impl<T> ParsableTransformation<Box<T>> for T {
@@ -578,9 +506,9 @@ impl<Ctx, T: Parsable<Ctx>> Parsable<Ctx> for Box<T> {
 #[cfg(test)]
 mod tests {
     use crate::error::{ParseError, UnrecognizedToken};
-    use crate::testing::{test_complete, test_parse, token};
+    use crate::testing::{test_parse, token};
     use crate::tokens::{Token, TokenStream};
-    use crate::{CompletionResult, Parsable, ParseResult, Parser};
+    use crate::{Parsable, ParseResult, Parser};
 
     #[derive(PartialEq, Eq, Debug)]
     struct MockEnum;
@@ -604,10 +532,6 @@ mod tests {
                 }
                 Token::Attribute(_) => Err(UnrecognizedToken::new(token, remaining).into()),
             }
-        }
-
-        fn complete<'a>(&self, _input: TokenStream<'a>, _ctx: Ctx) -> CompletionResult<'a> {
-            todo!()
         }
     }
 
@@ -692,48 +616,6 @@ mod tests {
             fails_if_variant_is_unrecognized, Vec<MockEnum>,
             "variant unknown" => Error(ParseError::unknown(token!("unknown")))
         );
-
-        test_complete!(complete_first, Vec<bool>, "tr" => {
-            consumed: true,
-            remaining: None,
-            suggestions: ["ue"],
-        });
-
-        test_complete!(complete_not_first, Vec<bool>, "true fa" => {
-            consumed: true,
-            remaining: None,
-            suggestions: ["lse"],
-        });
-
-        test_complete!(complete_consumed, Vec<bool>, "true false " => {
-            consumed: true,
-            remaining: Some(None),
-            suggestions: [],
-        });
-
-        test_complete!(suggestion_stops_on_unknown_arg, Vec<bool>, "true --unknown false " => {
-            consumed: true,
-            remaining: Some(Some(token!(--"unknown"))),
-            suggestions: [],
-        });
-
-        test_complete!(suggestion_stops_on_unknown_arg_first, Vec<bool>, "--unknown true false " => {
-            consumed: false,
-            remaining: Some(Some(token!(--"unknown"))),
-            suggestions: [],
-        });
-
-        test_complete!(suggestion_nested, Vec<Vec<bool>>, "(true false) (false) (fal" => {
-            consumed: true,
-            remaining: None,
-            suggestions: ["se"],
-        });
-
-        test_complete!(suggestion_nested_closed, Vec<Vec<bool>>, "(true false) (false) (fal)" => {
-            consumed: true,
-            remaining: Some(None),
-            suggestions: [],
-        });
     }
 
     mod tuple_parser {
@@ -779,27 +661,6 @@ mod tests {
             fails_if_variant_is_unrecognized, (MockEnum, MockEnum),
             "variant unknown remaining" => Error(ParseError::unknown(token!("unknown")))
         );
-
-        test_complete!(complete_suggestions, (u8, (bool, u8)), "5 fa" => {
-            consumed: true,
-            remaining: None,
-            suggestions: ["lse"],
-        });
-        test_complete!(complete_consumed, (u8, (bool, u8)), "5 false 4 6" => {
-            consumed: true,
-            remaining: Some(Some(token!("6"))),
-            suggestions: [],
-        });
-        test_complete!(complete_unexpected_attr, (u8, (bool, u8)), "5 false --unknown 6" => {
-            consumed: true,
-            remaining: None,
-            suggestions: [],
-        });
-        test_complete!(complete_unexpected_attr_first, (u8, (bool, u8)), "--unknown 5 false 4 6" => {
-            consumed: false,
-            remaining: Some(Some(token!(--"unknown"))),
-            suggestions: [],
-        });
     }
 
     mod box_parser {
@@ -809,11 +670,6 @@ mod tests {
             parse, Box<bool>,
             "true 10" => Ok(Box::new(true), Some(token!("10")))
         );
-        test_complete!(completion, Box<bool>, "tr" => {
-            consumed: true,
-            remaining: None,
-            suggestions: ["ue"],
-        });
     }
 
     mod option_parser {
@@ -831,19 +687,6 @@ mod tests {
             parse_none_on_unknown_attribute, Option<bool>,
             "--unknown" => Ok(None, Some(token!(--"unknown")))
         );
-
-        test_complete!(complete, Option<bool>, "tr" => {
-            consumed: true,
-            remaining: None,
-            suggestions: ["ue"]
-        });
-
-        test_complete!(complete_consumed, Option<bool>, "true " => {
-            consumed: true,
-            remaining: Some(None),
-            suggestions: []
-        });
-
         test_parse!(
             tuple_of_options_all, Vec<(bool, Option<bool>)>,
             "true false true false" => Ok(vec![(true, Some(false)), (true, Some(false))], None)

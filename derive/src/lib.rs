@@ -9,29 +9,27 @@ mod variants_gen;
 use attributes::{BuildableAttributes, TypeAttributes};
 use context::CodegenContext;
 use fields::FieldsSet;
-use fields_gen::{gen_complete_struct, gen_parse_struct};
+use fields_gen::gen_parse_struct;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::spanned::Spanned;
 use variants::VariantsSet;
-use variants_gen::{gen_complete_enum, gen_parse_enum};
+use variants_gen::gen_parse_enum;
 
-type DeriveResult = Result<(TokenStream2, TokenStream2), syn::Error>;
+type DeriveResult = Result<TokenStream2, syn::Error>;
 
 fn derive_struct<'a>(ctx: &mut CodegenContext<'a>, data: &'a syn::DataStruct) -> DeriveResult {
     let fieldset = FieldsSet::from_fields(ctx, &data.fields)?;
     let name = ctx.type_name;
     let parse_tokens = gen_parse_struct(quote! { #name }, ctx, &fieldset, None);
-    let complete_tokens = gen_complete_struct(ctx, &fieldset, None);
-    Ok((parse_tokens, complete_tokens))
+    Ok(parse_tokens)
 }
 
 fn derive_enum<'a>(ctx: &mut CodegenContext<'a>, data: &'a syn::DataEnum) -> DeriveResult {
     let variantset = VariantsSet::from_variants(ctx, data.variants.iter())?;
     let parse_tokens = gen_parse_enum(ctx, &variantset);
-    let complete_tokens = gen_complete_enum(ctx, &variantset);
-    Ok((parse_tokens, complete_tokens))
+    Ok(parse_tokens)
 }
 
 fn derive<'a>(ctx: &mut CodegenContext<'a>, input: &'a syn::DeriveInput) -> DeriveResult {
@@ -57,9 +55,7 @@ pub fn derive_parseable(input: TokenStream) -> TokenStream {
     let result = derive(&mut context, &input);
 
     match result {
-        Ok((parse_impl, complete_impl)) => {
-            gen::implementation(name, &context, parse_impl, complete_impl).into()
-        }
+        Ok(parse_impl) => gen::implementation(name, &context, parse_impl).into(),
         Err(error) => error.into_compile_error().into(),
     }
 }

@@ -40,7 +40,7 @@ impl ParsableTransformation<f64> for Expression {
             Expression::Add(a, b) => Ok(a + b),
             Expression::Subtract(a, b) => Ok(a - b),
             Expression::Multiply(a, b) => Ok(a * b),
-            Expression::Divide(_, b) if b == 0.0 => {
+            Expression::Divide(_, 0.0) => {
                 Err(ParseError::custom("cannot divide by zero"))
             }
             Expression::Divide(a, b) => Ok(a / b),
