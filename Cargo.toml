@@ -18,6 +18,7 @@ default = []
 std = []
 
 [dependencies]
+heapless = "0.9"
 kmdparse-derive = { path = "./derive", version = "=0.0.2" }
 
 [dev-dependencies]

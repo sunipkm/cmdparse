@@ -22,49 +22,88 @@ pub trait ParsableCollection {
     fn append(&mut self, item: Self::Item);
 }
 
-#[derive(Debug, Clone, PartialEq)]
-/// Parser implementation for fixed-size arrays `[T; N]`
-pub struct ParsableArray<T, const N: usize>(pub [T; N], usize);
+#[derive(Debug, Clone)]
+/// Parser implementation for fixed-size arrays `[T; N]`.
+/// This parser parses up to N items of type T and stores them in the array.
+pub struct ParsableArray<T, const N: usize, const FILL: bool> {
+    array: [T; N],
+    length: usize,
+}
 
-impl<T, const N: usize> AsRef<[T]> for ParsableArray<T, N> {
+impl<const N: usize, const FILL: bool> PartialEq for ParsableArray<u8, N, FILL> {
+    fn eq(&self, other: &Self) -> bool {
+        self.length == other.length && self.array[..self.length] == other.array[..other.length]
+    }
+}
+
+impl<T, const N: usize, const FILL: bool> AsRef<[T]> for ParsableArray<T, N, FILL> {
     fn as_ref(&self) -> &[T] {
-        &self.0[..self.1]
+        &self.array[..self.length]
     }
 }
 
-impl<T, const N: usize> AsMut<[T]> for ParsableArray<T, N> {
+impl<T, const N: usize, const FILL: bool> AsMut<[T]> for ParsableArray<T, N, FILL> {
     fn as_mut(&mut self) -> &mut [T] {
-        &mut self.0[..self.1]
+        &mut self.array[..self.length]
     }
 }
 
-impl<T, const N: usize> From<[T; N]> for ParsableArray<T, N> {
+impl<T, const N: usize, const FILL: bool> From<[T; N]> for ParsableArray<T, N, FILL> {
     fn from(array: [T; N]) -> Self {
-        Self(array, N)
+        Self { array, length: N }
     }
 }
 
-impl<T: Default + Copy, const N: usize> Default for ParsableArray<T, N> {
+impl<T: Default + Copy, const N: usize, const FILL: bool> Default for ParsableArray<T, N, FILL> {
     fn default() -> Self {
-        Self([T::default(); N], 0)
-    }
-}
-
-impl<T, const N: usize> ParsableCollection for ParsableArray<T, N> {
-    type Item = T;
-
-    fn append(&mut self, item: Self::Item) {
-        if self.1 < N {
-            self.0[self.1] = item;
-            self.1 += 1;
+        Self {
+            array: [T::default(); N],
+            length: 0,
         }
     }
 }
 
-impl<Ctx: Clone, T: Parsable<Ctx> + Copy + Default, const N: usize> Parsable<Ctx>
-    for ParsableArray<T, N>
+impl<Ctx: Clone, T: Parsable<Ctx> + Copy + Default, const N: usize, const FILL: bool> Parser<Ctx>
+    for ParsableArray<T, N, FILL>
 {
-    type Parser = CollectionParser<Self, T::Parser>;
+    type Value = Self;
+
+    fn parse<'a>(&self, mut input: TokenStream<'a>, ctx: Ctx) -> ParseResult<'a, Self::Value> {
+        let parser = T::Parser::default();
+        let mut is_first = true;
+        let mut result = Self::default();
+        while !input.is_empty() {
+            let item_result = input.with_nested(|input| parser.parse(input, ctx.clone()));
+            match item_result {
+                Ok((value, remaining)) => {
+                    if result.length < N {
+                        result.array[result.length] = value;
+                        result.length += 1;
+                    } else {
+                        Err(ParseError::custom("too many items for fixed-size array"))?;
+                    }
+                    input = remaining;
+                }
+                Err(ParseFailure::Error(error)) => return Err(error.into()),
+                Err(unrecognized @ ParseFailure::Unrecognized(_)) if is_first => {
+                    return Err(unrecognized)
+                }
+                Err(ParseFailure::Unrecognized(unrecognized)) => match unrecognized.token() {
+                    Token::Attribute(_) => break,
+                    Token::Text(_) => return Err(ParseError::unknown(unrecognized.token()).into()),
+                },
+            }
+            is_first = false;
+        }
+        if FILL && result.length < N {
+            Err(ParseError::custom("not enough items for fixed-size array"))?;
+        }
+        Ok((result, input))
+    }
+}
+
+impl<Ctx: Clone, const N: usize, const FILL: bool> Parsable<Ctx> for ParsableArray<u8, N, FILL> {
+    type Parser = ParsableArray<u8, N, FILL>;
 }
 
 #[cfg(feature = "std")]

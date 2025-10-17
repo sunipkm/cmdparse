@@ -306,6 +306,35 @@ pub mod std_string_parsers {
 #[allow(unused_imports)]
 pub use std_string_parsers::StringParser;
 
+#[derive(Debug, Default)]
+/// Parser implementation for [`heapless::String<N>`]
+pub struct HeaplessStringParser<const N: usize>;
+
+impl<Ctx, const N: usize> Parser<Ctx> for HeaplessStringParser<N> {
+    type Value = heapless::String<N>;
+
+    fn parse<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> ParseResult<'a, Self::Value> {
+        let (token, remaining) = input
+            .take()
+            .transpose()?
+            .ok_or_else(|| ParseError::token_required().expected("string"))?;
+        match token {
+            Token::Text(text) => {
+                let mut heapless_string = heapless::String::<N>::new();
+                heapless_string.push_str(text.parse_string()).map_err(|_| {
+                    ParseError::invalid(token, Some("string too long")).expected("string")
+                })?;
+                Ok((heapless_string, remaining))
+            }
+            Token::Attribute(_) => Err(UnrecognizedToken::new(token, remaining).into()),
+        }
+    }
+}
+
+impl <Ctx, const N: usize> Parsable<Ctx> for heapless::String<N> {
+    type Parser = HeaplessStringParser<N>;
+}
+
 /// Parser implementation for [`bool`]ean values
 ///
 /// This parser consumes exactly one token and does not recognize any attributes. At allows the
