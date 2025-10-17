@@ -150,6 +150,11 @@
 //!
 //! More details about how the tokenization and the parsing algorithm are documented in the
 //! [`tokens`] module’s and [`Parser`] trait’s documentation.
+//! 
+//! # Features
+//! This crate is `no_std` compatible. Features that depend on the standard library are only enabled
+//! when the `std` feature is enabled. These features include support for types from the standard
+//! library, such as `Vec`, `String`, and collections from the standard library.
 
 #[cfg(doc)]
 extern crate std;
