@@ -154,17 +154,21 @@
 #[cfg(doc)]
 extern crate std;
 #[cfg(doc)]
-use std::{collections::BTreeSet, string::{String, ToString}, vec::Vec};
+use std::{
+    collections::BTreeSet,
+    string::{String, ToString},
+    vec::Vec,
+};
 
 pub mod error;
 pub mod parsers;
 pub mod testing;
 pub mod tokens;
 
-#[doc(hidden)]
-pub use kmdparse_derive::Parsable;
 use error::ParseError;
 use error::ParseFailure;
+#[doc(hidden)]
+pub use kmdparse_derive::Parsable;
 use tokens::TokenStream;
 
 /// The result value returned by the individual parsers

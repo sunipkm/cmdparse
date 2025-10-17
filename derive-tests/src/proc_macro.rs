@@ -41,7 +41,6 @@ mod newtype_struct {
         unrecognized_attr, Newtype,
         "--attr false abc" => Unrecognized(token!(--"attr"), Some(token!("false")))
     );
-
 }
 
 mod multiple_args {

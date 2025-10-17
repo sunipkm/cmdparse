@@ -39,10 +39,10 @@ impl<Ctx> Parsable<Ctx> for PathBuf {
 #[cfg(test)]
 mod tests {
     extern crate std;
-    use std::string::ToString;
     use crate::error::ParseError;
     use crate::testing::{test_parse, token};
     use std::path::PathBuf;
+    use std::string::ToString;
 
     test_parse!(
         parse_empty, PathBuf,

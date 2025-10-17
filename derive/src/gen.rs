@@ -341,11 +341,7 @@ mod tests {
         fn no_parsers() {
             let mock_context = MockCodegenContext::default();
             let ctx = mock_context.context();
-            let result = implementation(
-                &format_ident!("NoFields"),
-                &ctx,
-                quote! {parse!()},
-            );
+            let result = implementation(&format_ident!("NoFields"), &ctx, quote! {parse!()});
 
             let expected = quote! {
                 #[derive(Default)]
@@ -379,11 +375,7 @@ mod tests {
                 syn::parse2(quote! {super::Parser}).unwrap(),
             ));
             ctx.push_parser(Parser::FromParsable(&ty));
-            let result = implementation(
-                &format_ident!("WithConcreteCtx"),
-                &ctx,
-                quote! {parse!()},
-            );
+            let result = implementation(&format_ident!("WithConcreteCtx"), &ctx, quote! {parse!()});
 
             let expected = quote! {
                 #[derive(Default)]
@@ -430,11 +422,7 @@ mod tests {
             ctx.push_parser(Parser::Explicit(
                 syn::parse2(quote! {super::ParserB<'a>}).unwrap(),
             ));
-            let result = implementation(
-                &format_ident!("WithGenerics"),
-                &ctx,
-                quote! {parse!()},
-            );
+            let result = implementation(&format_ident!("WithGenerics"), &ctx, quote! {parse!()});
 
             let expected = quote! {
                 #[derive(Default)]

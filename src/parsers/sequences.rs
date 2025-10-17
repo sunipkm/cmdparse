@@ -22,13 +22,21 @@ pub trait ParsableCollection {
     fn append(&mut self, item: Self::Item);
 }
 
-#[derive(Debug, Clone, PartialEq, AsRef, AsMut)]
-/// Parser implementation for fixed-size arrays
-pub struct ParsableArray<T, const N: usize>(
-    #[as_mut(forward)]
-    #[as_ref(forward)]
-    pub [T; N], 
-    usize);
+#[derive(Debug, Clone, PartialEq)]
+/// Parser implementation for fixed-size arrays `[T; N]`
+pub struct ParsableArray<T, const N: usize>(pub [T; N], usize);
+
+impl<T, const N: usize> AsRef<[T]> for ParsableArray<T, N> {
+    fn as_ref(&self) -> &[T] {
+        &self.0[..self.1]
+    }
+}
+
+impl<T, const N: usize> AsMut<[T]> for ParsableArray<T, N> {
+    fn as_mut(&mut self) -> &mut [T] {
+        &mut self.0[..self.1]
+    }
+}
 
 impl<T, const N: usize> From<[T; N]> for ParsableArray<T, N> {
     fn from(array: [T; N]) -> Self {
@@ -131,7 +139,6 @@ pub mod std_collection_parser {
         type Parser = TransformParser<T::Parser, T, Box<T>>;
     }
 }
-use derive_more::{AsMut, AsRef};
 #[cfg(feature = "std")]
 #[allow(unused_imports)]
 pub use std_collection_parser::*;
