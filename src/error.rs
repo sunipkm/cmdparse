@@ -5,19 +5,17 @@
 //! these types and how each is used in the parsing process
 
 use crate::tokens::{Token, TokenStream, UnbalancedParenthesis};
-use std::borrow::Cow;
-use std::fmt;
 
 #[derive(Debug, PartialEq)]
 enum ParseErrorVariant<'a> {
     Invalid {
         token: Token<'a>,
-        message: Option<Cow<'static, str>>,
+        message: Option<&'static str>,
     },
     Unknown(Token<'a>),
     TokenRequired,
     UnbalancedParenthesis,
-    Custom(Cow<'static, str>),
+    Custom(&'static str),
 }
 
 /// Unrecoverable parsing error
@@ -31,7 +29,7 @@ enum ParseErrorVariant<'a> {
 #[derive(Debug, PartialEq)]
 pub struct ParseError<'a> {
     variant: ParseErrorVariant<'a>,
-    expected: Option<Cow<'static, str>>,
+    expected: Option<&'static str>,
 }
 
 impl<'a> ParseError<'a> {
@@ -76,7 +74,7 @@ impl<'a> ParseError<'a> {
     /// the parsing has failed, it will be shown when the error is formatted.
     ///
     /// This function takes a Token that the parser failed to handle and an optional message text.
-    pub fn invalid(token: Token<'a>, message: Option<Cow<'static, str>>) -> Self {
+    pub fn invalid(token: Token<'a>, message: Option<&'static str>) -> Self {
         ParseError {
             variant: ParseErrorVariant::Invalid { token, message },
             expected: None,
@@ -86,9 +84,9 @@ impl<'a> ParseError<'a> {
     /// Creates an error with a custom message. No semantics are associated with this error, it can
     /// be used when neither of other error types is applicable, for example when performing
     /// validation.
-    pub fn custom(message: impl Into<Cow<'static, str>>) -> Self {
+    pub fn custom(message: &'static str) -> Self {
         ParseError {
-            variant: ParseErrorVariant::Custom(message.into()),
+            variant: ParseErrorVariant::Custom(message),
             expected: None,
         }
     }
@@ -97,8 +95,8 @@ impl<'a> ParseError<'a> {
     /// parse when if failed.
     ///
     /// This value is displayed when `ParseError` is formatted.
-    pub fn expected(mut self, expected: impl Into<Cow<'static, str>>) -> Self {
-        self.expected = Some(expected.into());
+    pub fn expected(mut self, expected: &'static str) -> Self {
+        self.expected = Some(expected);
         self
     }
 }
@@ -109,34 +107,47 @@ impl<'a> From<UnbalancedParenthesis> for ParseError<'a> {
     }
 }
 
-impl<'a> std::error::Error for ParseError<'a> {}
-
-impl<'a> fmt::Display for ParseError<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.variant {
-            ParseErrorVariant::Invalid { token, message } => {
-                f.write_fmt(format_args!("cannot parse {}", token.into_raw_lexeme()))?;
-                if let Some(message) = message {
-                    f.write_fmt(format_args!(" ({})", message))?;
+#[cfg(feature = "std")]
+pub mod std_impl {
+    //! Standard library specific implementations for error types
+    extern crate std;
+    use super::{ParseError, ParseErrorVariant, Token};
+    use std::fmt;
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl<'a> std::error::Error for ParseError<'a> {}
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl<'a> fmt::Display for ParseError<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match &self.variant {
+                ParseErrorVariant::Invalid { token, message } => {
+                    f.write_fmt(format_args!("cannot parse {}", token.into_raw_lexeme()))?;
+                    if let Some(message) = message {
+                        f.write_fmt(format_args!(" ({})", message))?;
+                    }
                 }
+                ParseErrorVariant::Unknown(Token::Text(text)) => {
+                    f.write_fmt(format_args!("unrecognized token: {}", text))?;
+                }
+                ParseErrorVariant::Unknown(Token::Attribute(attr)) => {
+                    f.write_fmt(format_args!("unrecognized attribute: {}", attr))?;
+                }
+                ParseErrorVariant::TokenRequired => f.write_str("not enough tokens")?,
+                ParseErrorVariant::UnbalancedParenthesis => {
+                    f.write_str("unbalanced parenthesis")?
+                }
+                ParseErrorVariant::Custom(message) => f.write_str(message)?,
             }
-            ParseErrorVariant::Unknown(Token::Text(text)) => {
-                f.write_fmt(format_args!("unrecognized token: {}", text))?;
-            }
-            ParseErrorVariant::Unknown(Token::Attribute(attr)) => {
-                f.write_fmt(format_args!("unrecognized attribute: {}", attr))?;
-            }
-            ParseErrorVariant::TokenRequired => f.write_str("not enough tokens")?,
-            ParseErrorVariant::UnbalancedParenthesis => f.write_str("unbalanced parenthesis")?,
-            ParseErrorVariant::Custom(message) => f.write_str(message)?,
-        }
 
-        if let Some(expected) = &self.expected {
-            f.write_fmt(format_args!(", expected {}", expected))?;
+            if let Some(expected) = &self.expected {
+                f.write_fmt(format_args!(", expected {}", expected))?;
+            }
+            Ok(())
         }
-        Ok(())
     }
 }
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+pub use std_impl::*;
 
 /// Value’s failed parsing result
 ///
@@ -228,8 +239,10 @@ impl<'a> From<UnrecognizedToken<'a>> for ParseFailure<'a> {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
     use super::ParseError;
     use crate::testing::token;
+    use std::string::ToString;
 
     mod error_display {
         use super::*;
@@ -245,7 +258,7 @@ mod tests {
 
         #[test]
         fn invalid_with_message() {
-            let error = ParseError::invalid(token!("<<token>>"), Some("not a number".into()));
+            let error = ParseError::invalid(token!("<<token>>"), Some("not a number"));
             assert_eq!(
                 &error.to_string(),
                 "cannot parse \"<<token>>\" (not a number)"

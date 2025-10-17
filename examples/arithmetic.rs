@@ -1,6 +1,6 @@
-use cmdparse::error::ParseError;
-use cmdparse::parsers::{ParsableTransformation, TransformParser};
-use cmdparse::{parse_parser, Parsable};
+use kmdparse::error::ParseError;
+use kmdparse::parsers::{ParsableTransformation, TransformParser};
+use kmdparse::{parse_parser, Parsable};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 

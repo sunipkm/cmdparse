@@ -3,6 +3,9 @@ use super::{Token, UnbalancedParenthesis};
 use crate::error::{ParseError, ParseFailure};
 use crate::ParseResult;
 
+#[cfg(doc)]
+use crate::error::UnrecognizedToken;
+
 /// Representation of the input as a sequence of tokens
 ///
 /// The `TokenStrem` holds the reference of the input stream and is responsible for tokenizing it
@@ -18,8 +21,7 @@ use crate::ParseResult;
 ///    non-consumed portion of the input starts with an opening parenthesis;
 ///  * the token stream is considered to be empty if the non-consumed portion of the input start
 ///    with a closing parenthesis;
-///  * to handle nested structures, use either [`with_nested`](TokenStream::with_nested) or
-///    [`complete_nested`](TokenStream::complete_nested). These methods take a closure that returns
+///  * to handle nested structures, use [`with_nested`](TokenStream::with_nested). These methods take a closure that returns
 ///    a result and a `TokenStream` representing the remainder of the stream that wasn't consumed
 ///    during parsing. Token stream checks that all tokens consumed by the inner closure have been
 ///    processed and return an appropriate error otherwise.
@@ -157,8 +159,10 @@ impl<'a> TokenStream<'a> {
 #[cfg(test)]
 mod tests {
     use super::TokenStream;
+    extern crate std;
     use crate::testing::token;
     use crate::tokens::{Token, UnbalancedParenthesis};
+    use std::string::ToString;
 
     fn assert_takes<'a>(stream: TokenStream<'a>, expected: Token<'a>) -> TokenStream<'a> {
         let peeked = stream.peek().unwrap().unwrap();

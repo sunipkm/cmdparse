@@ -1,3 +1,4 @@
+extern crate std;
 use crate::error::{ParseError, UnrecognizedToken};
 use crate::tokens::Token;
 use crate::{tokens::TokenStream, Parser};
@@ -11,15 +12,17 @@ use std::path::PathBuf;
 /// enumerates the directory at the given path and suggests completions that would produce the path
 /// to an existing directory item.
 #[derive(Default)]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct PathParser;
 
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl<Ctx> Parser<Ctx> for PathParser {
     type Value = PathBuf;
 
     fn parse<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> ParseResult<'a, Self::Value> {
         match input.take() {
             Some(Ok((token, remaining))) => match token {
-                Token::Text(text) => Ok((text.parse_string().into_owned().into(), remaining)),
+                Token::Text(text) => Ok((text.parse_string().into(), remaining)),
                 Token::Attribute(_) => Err(UnrecognizedToken::new(token, remaining).into()),
             },
             Some(Err(err)) => Err(err.into()),
@@ -28,12 +31,15 @@ impl<Ctx> Parser<Ctx> for PathParser {
     }
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl<Ctx> Parsable<Ctx> for PathBuf {
     type Parser = PathParser;
 }
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+    use std::string::ToString;
     use crate::error::ParseError;
     use crate::testing::{test_parse, token};
     use std::path::PathBuf;

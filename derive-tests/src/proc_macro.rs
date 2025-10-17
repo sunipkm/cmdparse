@@ -1,6 +1,6 @@
-use cmdparse::error::ParseError;
-use cmdparse::testing::{test_parse, token};
-use cmdparse::Parsable;
+use kmdparse::error::ParseError;
+use kmdparse::testing::{test_parse, token};
+use kmdparse::Parsable;
 
 mod unit_struct {
     use super::*;
@@ -73,7 +73,7 @@ mod multiple_args {
 
 mod custom_ctx {
     use super::*;
-    use cmdparse::{tokens::TokenStream, ParseResult, Parser};
+    use kmdparse::{tokens::TokenStream, ParseResult, Parser};
 
     #[derive(Default)]
     struct MyParser;
@@ -104,7 +104,7 @@ mod custom_ctx {
 
 mod custom_ctx_bounds {
     use super::*;
-    use cmdparse::{tokens::TokenStream, ParseResult, Parser};
+    use kmdparse::{tokens::TokenStream, ParseResult, Parser};
 
     trait CustomCtx {
         fn get_multiplier(&self) -> u8;

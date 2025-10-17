@@ -1,10 +1,15 @@
+#[cfg(doc)]
+extern crate std;
 use crate::error::{ParseError, ParseFailure};
 use crate::tokens::{Token, TokenStream};
 use crate::{Parsable, ParseResult, Parser};
-use std::cmp::Ord;
-use std::collections::{BTreeSet, HashSet, LinkedList, VecDeque};
-use std::hash::Hash;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
+#[cfg(doc)]
+use std::{
+    collections::{BTreeSet, HashSet, LinkedList, VecDeque},
+    string::{String, ToString},
+    vec::Vec,
+};
 
 /// Parse any one-dimensional collection of items
 ///
@@ -30,35 +35,68 @@ macro_rules! impl_parsable_collection {
     };
 }
 
-impl_parsable_collection! {Vec<T> {
-   fn append(&mut self, item: T) {
-     self.push(item);
-   }
-}}
+#[cfg(feature = "std")]
+pub mod std_collection_parser {
+    //! Standard library collection parsers implementations
+    use super::*;
+    extern crate std;
+    use std::boxed::Box;
+    use std::cmp::Ord;
+    use std::collections::{BTreeSet, HashSet, LinkedList, VecDeque};
+    use std::hash::Hash;
+    use std::vec::Vec;
 
-impl_parsable_collection! {VecDeque<T> {
-   fn append(&mut self, item: T) {
-     self.push_back(item);
-   }
-}}
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl_parsable_collection! {Vec<T> {
+       fn append(&mut self, item: T) {
+         self.push(item);
+       }
+    }}
 
-impl_parsable_collection! {LinkedList<T> {
-   fn append(&mut self, item: T) {
-     self.push_back(item);
-   }
-}}
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl_parsable_collection! {VecDeque<T> {
+       fn append(&mut self, item: T) {
+         self.push_back(item);
+       }
+    }}
 
-impl_parsable_collection! {HashSet<T> where T: Eq + Hash {
-   fn append(&mut self, item: T) {
-     self.insert(item);
-   }
-}}
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl_parsable_collection! {LinkedList<T> {
+       fn append(&mut self, item: T) {
+         self.push_back(item);
+       }
+    }}
 
-impl_parsable_collection! {BTreeSet<T> where T: Eq + Hash + Ord {
-   fn append(&mut self, item: T) {
-     self.insert(item);
-   }
-}}
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl_parsable_collection! {HashSet<T> where T: Eq + Hash {
+       fn append(&mut self, item: T) {
+         self.insert(item);
+       }
+    }}
+
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl_parsable_collection! {BTreeSet<T> where T: Eq + Hash + Ord {
+       fn append(&mut self, item: T) {
+         self.insert(item);
+       }
+    }}
+
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl<T> ParsableTransformation<Box<T>> for T {
+        type Input = Self;
+
+        fn transform(input: Self::Input) -> Result<Box<T>, ParseError<'static>> {
+            Ok(Box::new(input))
+        }
+    }
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl<Ctx, T: Parsable<Ctx>> Parsable<Ctx> for Box<T> {
+        type Parser = TransformParser<T::Parser, T, Box<T>>;
+    }
+}
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+pub use std_collection_parser::*;
 
 /// Parser implementation for any one-dimensional collection of items
 ///
@@ -86,9 +124,11 @@ impl_parsable_collection! {BTreeSet<T> where T: Eq + Hash + Ord {
 /// all of them are going to be consumed by the first item's parser:
 ///
 /// ```
-/// use cmdparse::parse;
+/// # extern crate std;
+/// # use std::vec::Vec;
+/// use kmdparse::parse;
 ///
-/// # fn main() -> Result<(), cmdparse::error::ParseError<'static>> {
+/// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
 /// let result = parse::<_, Vec<Vec<i32>>>("1 2 3 4 5", ())?;
 /// assert_eq!(result, vec![vec![1, 2, 3, 4, 5]]);
 /// # Ok(())
@@ -99,8 +139,10 @@ impl_parsable_collection! {BTreeSet<T> where T: Eq + Hash + Ord {
 /// with parenthesis:
 ///
 /// ```
-/// # use cmdparse::parse;
-/// # fn main() -> Result<(), cmdparse::error::ParseError<'static>> {
+/// # extern crate std;
+/// # use std::vec::Vec;
+/// # use kmdparse::parse;
+/// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
 /// let result = parse::<_, Vec<Vec<i32>>>("(1 2 3) (4 5)", ())?;
 /// assert_eq!(result, vec![vec![1, 2, 3], vec![4, 5]]);
 /// # Ok(())
@@ -109,15 +151,15 @@ impl_parsable_collection! {BTreeSet<T> where T: Eq + Hash + Ord {
 ///
 /// # Custom collections
 ///
-/// `cmdparse` implements Parsable using CollectionParser as a default parser for collections from
+/// `kmdparse` implements Parsable using CollectionParser as a default parser for collections from
 /// the Rust’s standard library: [`Vec`], [`VecDeque`], [`LinkedList`], [`HashSet`], [`BTreeSet`].
 ///
 /// It is easy to extend this list with a custom collection. To do so, one need to implement
 /// [`Default`], [`ParsableCollection`], and [`Parsable`] traits.
 ///
 /// ```
-/// use cmdparse::parsers::{CollectionParser, ParsableCollection};
-/// use cmdparse::{parse, Parsable};
+/// use kmdparse::parsers::{CollectionParser, ParsableCollection};
+/// use kmdparse::{parse, Parsable};
 ///
 /// #[derive(Default, Debug, PartialEq, Eq)]
 /// struct MyBitArray(u128);
@@ -134,7 +176,7 @@ impl_parsable_collection! {BTreeSet<T> where T: Eq + Hash + Ord {
 ///     type Parser = CollectionParser<Self, <bool as Parsable<Ctx>>::Parser>;
 /// }
 ///
-/// # fn main() -> Result<(), cmdparse::error::ParseError<'static>> {
+/// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
 /// let result = parse::<_, MyBitArray>("true false false true true", ())?;
 /// assert_eq!(result, MyBitArray(0b10011));
 /// # Ok(())
@@ -232,9 +274,9 @@ impl<Ctx, T> Parsable<Ctx> for PhantomData<T> {
 ///
 /// # Examples
 /// ```
-/// use cmdparse::parse;
+/// use kmdparse::parse;
 ///
-/// # fn main() -> Result<(), cmdparse::error::ParseError<'static>> {
+/// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
 /// let value = parse::<_, (u8, i32, bool)>("10 42 false", ())?;
 /// assert_eq!(value, (10, 42, false));
 /// # Ok(())
@@ -307,7 +349,7 @@ pub mod tuples {
     gen_parsable_tuple!(TupleParser16, T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16);
 }
 
-/// Parser implementation for Option<T>
+/// Parser implementation for `Option<T>`
 ///
 /// This parser calls delegates the parsing and completion to the parser passed as its generic
 /// parameter and returns:
@@ -385,9 +427,9 @@ pub trait ParsableTransformation<O> {
 /// default parser implementation (without using derive macro):
 ///
 /// ```
-/// use cmdparse::{Parsable, parse};
-/// use cmdparse::error::ParseError;
-/// use cmdparse::parsers::{TransformParser, ParsableTransformation};
+/// use kmdparse::{Parsable, parse};
+/// use kmdparse::error::ParseError;
+/// use kmdparse::parsers::{TransformParser, ParsableTransformation};
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// struct PostId(usize);
@@ -404,7 +446,7 @@ pub trait ParsableTransformation<O> {
 ///     type Parser = TransformParser<<usize as Parsable<Ctx>>::Parser, PostId, PostId>;
 /// }
 ///
-/// # fn main() -> Result<(), cmdparse::error::ParseError<'static>> {
+/// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
 /// let value = parse::<_, PostId>("42", ())?;
 /// assert_eq!(value, PostId(42));
 /// # Ok(())
@@ -416,12 +458,12 @@ pub trait ParsableTransformation<O> {
 /// functionally equivalent to the one above:
 ///
 /// ```
-/// # use cmdparse::{Parsable, parse};
+/// # use kmdparse::{Parsable, parse};
 /// #
 /// #[derive(Debug, PartialEq, Eq, Parsable)]
 /// struct PostId(usize);
 ///
-/// # fn main() -> Result<(), cmdparse::error::ParseError<'static>> {
+/// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
 /// let value = parse::<_, PostId>("42", ())?;
 /// assert_eq!(value, PostId(42));
 /// # Ok(())
@@ -434,9 +476,9 @@ pub trait ParsableTransformation<O> {
 /// transformations for the same type, which is useful for data validation:
 ///
 /// ```
-/// use cmdparse::{Parsable, parse_parser};
-/// use cmdparse::error::ParseError;
-/// use cmdparse::parsers::{TransformParser, ParsableTransformation};
+/// use kmdparse::{Parsable, parse_parser};
+/// use kmdparse::error::ParseError;
+/// use kmdparse::parsers::{TransformParser, ParsableTransformation};
 ///
 /// struct IsPowerOfTwo;
 ///
@@ -491,18 +533,6 @@ where
     }
 }
 
-impl<T> ParsableTransformation<Box<T>> for T {
-    type Input = Self;
-
-    fn transform(input: Self::Input) -> Result<Box<T>, ParseError<'static>> {
-        Ok(Box::new(input))
-    }
-}
-
-impl<Ctx, T: Parsable<Ctx>> Parsable<Ctx> for Box<T> {
-    type Parser = TransformParser<T::Parser, T, Box<T>>;
-}
-
 #[cfg(test)]
 mod tests {
     use crate::error::{ParseError, UnrecognizedToken};
@@ -524,7 +554,7 @@ mod tests {
             match token {
                 Token::Text(text) => {
                     let text = text.parse_string();
-                    if &text == "variant" {
+                    if text == "variant" {
                         Ok((MockEnum, remaining))
                     } else {
                         Err(UnrecognizedToken::new(token, remaining).into())
@@ -541,9 +571,12 @@ mod tests {
 
     mod collection_parser {
         use super::*;
+        extern crate std;
         use std::collections::{BTreeSet, HashSet, LinkedList, VecDeque};
+        use std::vec;
+        use std::vec::Vec;
 
-        test_parse!(parse_empty, Vec<i32>, "" => Ok(vec![], None));
+        test_parse!(parse_empty, std::vec::Vec<i32>, "" => Ok(vec![], None));
         test_parse!(
             parse_flat_vec, Vec<i32>,
             "1 2 3 4 5" => Ok(vec![1, 2, 3, 4, 5], None)
@@ -620,6 +653,8 @@ mod tests {
 
     mod tuple_parser {
         use super::*;
+        extern crate std;
+        use std::{vec, vec::Vec};
 
         test_parse!(
             parse_tuple, (u8, (u16, bool), (i32, i32, i32), (bool,)),
@@ -665,6 +700,8 @@ mod tests {
 
     mod box_parser {
         use super::*;
+        extern crate std;
+        use std::boxed::Box;
 
         test_parse!(
             parse, Box<bool>,
@@ -674,7 +711,8 @@ mod tests {
 
     mod option_parser {
         use super::*;
-
+        extern crate std;
+        use std::{vec, vec::Vec};
         test_parse!(
             parse_some, Option<bool>,
             "true remaining" => Ok(Some(true), Some(token!("remaining")))
@@ -703,6 +741,7 @@ mod tests {
 
     mod parse_default {
         use super::*;
+        extern crate std;
         use std::marker::PhantomData;
 
         test_parse!(

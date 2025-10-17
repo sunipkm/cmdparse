@@ -20,8 +20,8 @@ impl<'a> VariantView<'a> {
                 input = remaining;
                 let result = (|| { #parse_variant })();
                 return result.map_err(|err| match err {
-                    error @ ::cmdparse::error::ParseFailure::Error(_) => error,
-                    ::cmdparse::error::ParseFailure::Unrecognized(unrecognized) => unrecognized.into_error().into(),
+                    error @ ::kmdparse::error::ParseFailure::Error(_) => error,
+                    ::kmdparse::error::ParseFailure::Unrecognized(unrecognized) => unrecognized.into_error().into(),
                 });
             }
         }
@@ -41,7 +41,7 @@ impl<'a> TransparentVariantView<'a> {
         quote! {
             match (||{ #parse_variant })() {
                 Ok(result) => return Ok(result),
-                Err(::cmdparse::error::ParseFailure::Unrecognized(_)) => {},
+                Err(::kmdparse::error::ParseFailure::Unrecognized(_)) => {},
                 #error_handle
             }
         }
@@ -62,18 +62,18 @@ pub(crate) fn gen_parse_enum(
 
     quote! {
         match input.take() {
-            None => Err(::cmdparse::error::ParseError::token_required().expected("variant").into()),
+            None => Err(::kmdparse::error::ParseError::token_required().expected("variant").into()),
             Some(Err(err)) => Err(err.into()),
-            Some(Ok((token @ ::cmdparse::tokens::Token::Attribute(_), remaining))) => {
-                Err(::cmdparse::error::UnrecognizedToken::new(token, remaining).into())
+            Some(Ok((token @ ::kmdparse::tokens::Token::Attribute(_), remaining))) => {
+                Err(::kmdparse::error::UnrecognizedToken::new(token, remaining).into())
             }
-            Some(Ok((token @ ::cmdparse::tokens::Token::Text(text) , remaining))) => {
+            Some(Ok((token @ ::kmdparse::tokens::Token::Text(text) , remaining))) => {
                 let text = text.parse_string();
                 match ::std::borrow::Borrow::<str>::borrow(&text) {
                     #(#variants_parsing)*
                    _ => {
                         #(#transparent_parsed)*
-                        Err(::cmdparse::error::UnrecognizedToken::new(token, remaining).into())
+                        Err(::kmdparse::error::UnrecognizedToken::new(token, remaining).into())
                     }
                 }
             }

@@ -1,8 +1,8 @@
-use cmdparse::error::ParseError;
-use cmdparse::parsers::{
+use kmdparse::error::ParseError;
+use kmdparse::parsers::{
     CollectionParser, ParsableCollection, ParsableTransformation, TransformParser,
 };
-use cmdparse::{parse_parser, Parsable};
+use kmdparse::{parse_parser, Parsable};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use smallvec::SmallVec;

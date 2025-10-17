@@ -4,5 +4,5 @@ version = "0.1.1"
 edition = "2021"
 
 [dependencies]
-cmdparse = { path = ".." }
+kmdparse = { path = ".." }
 

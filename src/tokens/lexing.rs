@@ -224,6 +224,8 @@ mod tests {
 
     #[test]
     fn lex_multiple() {
+        extern crate std;
+        use std::{vec::Vec, vec};
         let mut input = "first (second --attribute) third";
         let mut lexemes = Vec::new();
         loop {

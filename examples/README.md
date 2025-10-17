@@ -1,10 +1,10 @@
 # Examples
 
-There are several examples that demonstrate how to use `cmdparse`. These are
+There are several examples that demonstrate how to use `kmdparse`. These are
 more complete then examples provided in the documentation, as they include
 handling user input from stdin using
 [`rustyline`](https://github.com/kkawakam/rustyline) crate. Note that
-`rustyline` is not required to use `cmdparse`, it was chosen for easier
+`rustyline` is not required to use `kmdparse`, it was chosen for easier
 demonstration of completion capabilities.
 
 
@@ -26,7 +26,7 @@ storage> get-substr o 3 --start 3
 gen
 ```
 
-This example program demonstrates how `cmdparse` can be used to build
+This example program demonstrates how `kmdparse` can be used to build
 redis-like in-memory key-value storage with an interactive CLI interface.
 
 **Demonstrated functionality**:
@@ -48,7 +48,7 @@ $ cargo run --example arithmetic
 << 3.1415927300133055
 ```
 
-This example demonstrates less than conventional usage of `cmdparse`: it
+This example demonstrates less than conventional usage of `kmdparse`: it
 evaluates an expression written in the [Polish (prefix)
 notation](https://en.wikipedia.org/wiki/Polish_notation) as part of the parsing
 process.

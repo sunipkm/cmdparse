@@ -53,7 +53,7 @@ impl<'a> CodegenContext<'a> {
     pub(crate) fn parse_context_ident(&self) -> TokenStream {
         match &self.context_type {
             Some(ContextType::Concrete(ty)) => quote! {#ty},
-            _ => quote! {CmdParserCtx},
+            _ => quote! {kmdparserCtx},
         }
     }
 }

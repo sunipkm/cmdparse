@@ -1,11 +1,11 @@
+use core::fmt;
+use core::marker::PhantomData;
+use core::num::{IntErrorKind, ParseIntError};
+use core::str::FromStr;
+
 use crate::error::{ParseError, UnrecognizedToken};
 use crate::tokens::{Token, TokenStream};
 use crate::{Parsable, ParseResult, Parser};
-use std::borrow::{Borrow, Cow};
-use std::fmt;
-use std::marker::PhantomData;
-use std::num::{IntErrorKind, ParseIntError};
-use std::str::FromStr;
 
 macro_rules! no_state_parsable {
     ($type:ty, $parser:ident) => {
@@ -28,9 +28,9 @@ macro_rules! no_state_parsable {
 ///
 /// # Example
 /// ```
-/// use cmdparse::parse;
+/// use kmdparse::parse;
 ///
-/// # fn main() -> Result<(), cmdparse::error::ParseError<'static>> {
+/// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
 /// let value = parse::<_, i32>("15", ());
 /// assert_eq!(value, Ok(15));
 ///
@@ -47,8 +47,8 @@ pub struct IntegerParser<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<T> fmt::Debug for IntegerParser<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<T> core::fmt::Debug for IntegerParser<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("IntegerParser").finish()
     }
 }
@@ -74,18 +74,38 @@ no_state_parsable!(u128, IntegerParser);
 no_state_parsable!(isize, IntegerParser);
 no_state_parsable!(usize, IntegerParser);
 
-no_state_parsable!(std::num::NonZeroI8, IntegerParser);
-no_state_parsable!(std::num::NonZeroU8, IntegerParser);
-no_state_parsable!(std::num::NonZeroI16, IntegerParser);
-no_state_parsable!(std::num::NonZeroU16, IntegerParser);
-no_state_parsable!(std::num::NonZeroI32, IntegerParser);
-no_state_parsable!(std::num::NonZeroU32, IntegerParser);
-no_state_parsable!(std::num::NonZeroI64, IntegerParser);
-no_state_parsable!(std::num::NonZeroU64, IntegerParser);
-no_state_parsable!(std::num::NonZeroI128, IntegerParser);
-no_state_parsable!(std::num::NonZeroU128, IntegerParser);
-no_state_parsable!(std::num::NonZeroIsize, IntegerParser);
-no_state_parsable!(std::num::NonZeroUsize, IntegerParser);
+#[cfg(feature = "std")]
+mod std_num_parsers {
+    use super::*;
+    extern crate std;
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroI8, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroU8, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroI16, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroU16, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroI32, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroU32, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroI64, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroU64, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroI128, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroU128, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroIsize, IntegerParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::num::NonZeroUsize, IntegerParser);
+}
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+pub use std_num_parsers::*;
 
 impl<T, Ctx> Parser<Ctx> for IntegerParser<T>
 where
@@ -108,7 +128,7 @@ where
                         IntErrorKind::Zero => Some("cannot be zero"),
                         _ => None,
                     };
-                    Err(ParseError::invalid(token, message.map(Cow::Borrowed))
+                    Err(ParseError::invalid(token, message)
                         .expected("integer")
                         .into())
                 }
@@ -139,8 +159,8 @@ where
 /// [`FromStr`]:
 ///
 /// ```
-/// use cmdparse::parsers::FromStrParser;
-/// use cmdparse::{parse, Parsable};
+/// use kmdparse::parsers::FromStrParser;
+/// use kmdparse::{parse, Parsable};
 /// use std::str::FromStr;
 ///
 /// #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -191,12 +211,27 @@ impl<T> Default for FromStrParser<T> {
 
 no_state_parsable!(f32, FromStrParser);
 no_state_parsable!(f64, FromStrParser);
-no_state_parsable!(std::net::Ipv4Addr, FromStrParser);
-no_state_parsable!(std::net::Ipv6Addr, FromStrParser);
-no_state_parsable!(std::net::IpAddr, FromStrParser);
-no_state_parsable!(std::net::SocketAddrV4, FromStrParser);
-no_state_parsable!(std::net::SocketAddrV6, FromStrParser);
-no_state_parsable!(std::net::SocketAddr, FromStrParser);
+#[cfg(feature = "std")]
+pub mod std_net_parsers {
+    //! Standard library network address parsers implementations
+    use super::*;
+    extern crate std;
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::net::Ipv4Addr, FromStrParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::net::Ipv6Addr, FromStrParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::net::IpAddr, FromStrParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::net::SocketAddrV4, FromStrParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::net::SocketAddrV6, FromStrParser);
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    no_state_parsable!(std::net::SocketAddr, FromStrParser);
+}
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+pub use std_net_parsers::*;
 
 impl<T: FromStr, Ctx> Parser<Ctx> for FromStrParser<T> {
     type Value = T;
@@ -218,45 +253,58 @@ impl<T: FromStr, Ctx> Parser<Ctx> for FromStrParser<T> {
     }
 }
 
-/// Parser implementation for owned [`String`]s
-///
-/// This parser consumes exactly one token, does not recognize any attributes, and does not yield
-/// any completion suggestions.
-///
-/// # Example
-/// ```
-/// use cmdparse::parse;
-///
-/// # fn main() -> Result<(), cmdparse::error::ParseError<'static>> {
-/// assert_eq!(parse::<_, String>("token", ())?, "token".to_string());
-/// assert_eq!(
-///     parse::<_, String>("'multiple words'", ())?,
-///     "multiple words".to_string()
-/// );
-/// # Ok(())
-/// # }
-/// ```
-#[derive(Debug, Default)]
-pub struct StringParser;
+#[cfg(feature = "std")]
+pub mod std_string_parsers {
+    //! Standard library string parsers implementations
+    use super::*;
+    extern crate std;
+    use std::string::String;
+    use std::string::ToString;
+    ///
+    /// This parser consumes exactly one token, does not recognize any attributes, and does not yield
+    /// any completion suggestions.
+    ///
+    /// # Example
+    /// ```
+    /// use kmdparse::parse;
+    ///
+    /// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
+    /// assert_eq!(parse::<_, String>("token", ())?, "token".to_string());
+    /// assert_eq!(
+    ///     parse::<_, String>("'multiple words'", ())?,
+    ///     "multiple words".to_string()
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[derive(Debug, Default)]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    pub struct StringParser;
 
-impl<Ctx> Parser<Ctx> for StringParser {
-    type Value = String;
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl<Ctx> Parser<Ctx> for StringParser {
+        type Value = String;
 
-    fn parse<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> ParseResult<'a, Self::Value> {
-        let (token, remaining) = input
-            .take()
-            .transpose()?
-            .ok_or_else(|| ParseError::token_required().expected("string"))?;
-        match token {
-            Token::Text(text) => Ok((ToString::to_string(&text.parse_string()), remaining)),
-            Token::Attribute(_) => Err(UnrecognizedToken::new(token, remaining).into()),
+        fn parse<'a>(&self, input: TokenStream<'a>, _ctx: Ctx) -> ParseResult<'a, Self::Value> {
+            let (token, remaining) = input
+                .take()
+                .transpose()?
+                .ok_or_else(|| ParseError::token_required().expected("string"))?;
+            match token {
+                Token::Text(text) => Ok((ToString::to_string(&text.parse_string()), remaining)),
+                Token::Attribute(_) => Err(UnrecognizedToken::new(token, remaining).into()),
+            }
         }
     }
-}
 
-impl<Ctx> Parsable<Ctx> for String {
-    type Parser = StringParser;
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl<Ctx> Parsable<Ctx> for String {
+        type Parser = StringParser;
+    }
 }
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+pub use std_string_parsers::StringParser;
 
 /// Parser implementation for [`bool`]ean values
 ///
@@ -270,10 +318,10 @@ impl<Ctx> Parsable<Ctx> for String {
 ///
 /// # Example
 /// ```
-/// use cmdparse::{complete, parse};
+/// use kmdparse::{complete, parse};
 /// use std::collections::BTreeSet;
 ///
-/// # fn main() -> Result<(), cmdparse::error::ParseError<'static>> {
+/// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
 /// assert_eq!(parse::<_, bool>("false", ())?, false);
 /// assert_eq!(complete::<_, bool>("tr", ()), BTreeSet::from(["ue".into()]));
 /// # Ok(())
@@ -291,7 +339,7 @@ impl<Ctx> Parser<Ctx> for BooleanParser {
             .transpose()?
             .ok_or_else(|| ParseError::token_required().expected("boolean"))?;
         match token {
-            Token::Text(text) => match text.parse_string().borrow() {
+            Token::Text(text) => match text.parse_string() {
                 "true" | "t" | "yes" | "y" => Ok((true, remaining)),
                 "false" | "f" | "no" | "n" => Ok((false, remaining)),
                 _ => Err(ParseError::invalid(token, None).expected("boolean").into()),
@@ -307,11 +355,16 @@ impl<Ctx> Parsable<Ctx> for bool {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
     use super::{FromStrParser, IntegerParser};
     use crate::error::{ParseError, ParseFailure};
     use crate::testing::token;
     use crate::tokens::TokenStream;
     use crate::{Parsable, Parser};
+    use std::{
+        format,
+        string::{String, ToString},
+    };
 
     macro_rules! test_parse {
         ($name:ident, $type:ty, $text:literal => Ok($value:expr)) => {
@@ -341,7 +394,9 @@ mod tests {
                 let failure = Parser::<()>::parse(&parser, stream, ()).unwrap_err();
                 match failure {
                     ParseFailure::Error(error) => assert_eq!(error, $err),
-                    ParseFailure::Unrecognized(_) => panic!("expected Error, got {:?}", failure),
+                    ParseFailure::Unrecognized(_) => {
+                        std::panic!("expected Error, got {:?}", failure)
+                    }
                 }
             }
         };
@@ -355,7 +410,9 @@ mod tests {
                 let stream = TokenStream::new("--unrecognized abc");
                 let failure = Parser::<()>::parse(&parser, stream, ()).unwrap_err();
                 match failure {
-                    ParseFailure::Error(_) => panic!("expected Unrecognized, got {:?}", failure),
+                    ParseFailure::Error(_) => {
+                        std::panic!("expected Unrecognized, got {:?}", failure)
+                    }
                     ParseFailure::Unrecognized(unrecognized) => {
                         assert_eq!(unrecognized.token(), token!(--"unrecognized"));
                         assert_eq!(
@@ -382,12 +439,12 @@ mod tests {
         test_parse!(parse_u8, u8, "15" => Ok(15));
         test_parse!(
             parse_non_zero_u8_zero, std::num::NonZeroU8,
-            "0" => Err(ParseError::invalid(token!("0"), Some("cannot be zero".into())).expected("integer"))
+            "0" => Err(ParseError::invalid(token!("0"), Some("cannot be zero")).expected("integer"))
         );
         test_parse!(parse_non_zero_u8_non_zero, std::num::NonZeroU8, "5" => Ok(std::num::NonZeroU8::new(5).unwrap()));
         test_unrecognized_attribute!(unrecognized_attr, i32);
         test_parse!(parse_invalid, u16, "abc" => Err(ParseError::invalid(token!("abc"), None).expected("integer")));
-        test_parse!(parse_too_large, u16, "999999999" => Err(ParseError::invalid(token!("999999999"), Some("too large".into())).expected("integer")));
+        test_parse!(parse_too_large, u16, "999999999" => Err(ParseError::invalid(token!("999999999"), Some("too large")).expected("integer")));
         test_parse!(parse_empty_string, u16, "" => Err(ParseError::token_required().expected("integer")));
     }
 

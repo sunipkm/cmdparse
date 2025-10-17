@@ -1,6 +1,6 @@
 //! Splitting the input stream into a sequence of tokens
 //!
-//! `cmdparse`’s parsers do not work on the input string directly. Instead, they operate on the
+//! `kmdparse`’s parsers do not work on the input string directly. Instead, they operate on the
 //! token stream — an iterator-like sequence of tokens, each representing a text payload or an
 //! attribute name (a token with preceding `--`). Token stream does not include whitespaces or
 //! comments (substrings beginning from the first octothorp (`#`) in the input). A token may
@@ -11,7 +11,7 @@
 //! parsed into:
 //!
 //! ```
-//! # use cmdparse::tokens::{TokenStream, Token, RawLexeme, UnbalancedParenthesis};
+//! # use kmdparse::tokens::{TokenStream, Token, RawLexeme, UnbalancedParenthesis};
 //! #
 //! # fn main() -> Result<(), UnbalancedParenthesis> {
 //! let input = r#"send-message --to user@example.com --subject "Hello, \"world\"" # sending an email"#;
@@ -44,7 +44,7 @@
 //!  * The contents of the token is a [`RawLexeme`] &mdash; a thin wrapper around an input slice.
 //!    Each [`RawLexeme`] can be parsed into the intended representation:
 //! ```
-//! # use cmdparse::tokens::RawLexeme;
+//! # use kmdparse::tokens::RawLexeme;
 //! let lexeme = RawLexeme::new(r#""Hello, \"world\"""#);
 //! assert_eq!(&lexeme.parse_string(), r#"Hello, "world""#);
 //! ```
@@ -53,8 +53,6 @@ mod lexing;
 mod stream;
 
 use lexing::Lexeme;
-use std::borrow::Cow;
-use std::fmt::{self, Write};
 pub use stream::TokenStream;
 
 /// A wrapper type for a slice of the input string corresponding to a single lexeme
@@ -84,49 +82,49 @@ impl<'a> RawLexeme<'a> {
     ///
     /// Note that the quotes don’t need to be closed. If absent, the closing quotation mark is
     /// implied.
-    pub fn parse_string(self) -> Cow<'a, str> {
+    pub fn parse_string(self) -> &'a str {
         let text = self.0;
 
         let first_char = text.chars().next();
         if let Some(quote @ '\'' | quote @ '"') = first_char {
-            let mut string = String::new();
-            let mut escaped = false;
-            let text = if text.ends_with(quote) {
+            if text.ends_with(quote) {
                 &text[1..text.len() - 1]
             } else {
                 &text[1..]
-            };
-            for ch in text.chars() {
-                match ch {
-                    ch if escaped => {
-                        string.push(ch);
-                        escaped = false;
-                    }
-                    '\\' => escaped = true,
-                    ch => string.push(ch),
-                }
             }
-            Cow::Owned(string)
         } else {
-            Cow::Borrowed(text)
+            text
         }
     }
 }
 
-impl<'a> fmt::Display for RawLexeme<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let first_char = self.0.chars().next();
-        if let Some(quote @ '\'' | quote @ '"') = first_char {
-            f.write_str(self.0)?;
-            if !self.0.ends_with(quote) {
-                f.write_char(quote)?;
+#[cfg(feature = "std")]
+pub mod std_impl {
+    //! Standard library specific implementations for [`RawLexeme`] types
+    extern crate std;
+    use super::RawLexeme;
+    use core::fmt::Write;
+    use std::fmt;
+
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    impl<'a> fmt::Display for RawLexeme<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let first_char = self.0.chars().next();
+            if let Some(quote @ '\'' | quote @ '"') = first_char {
+                f.write_str(self.0)?;
+                if !self.0.ends_with(quote) {
+                    f.write_char(quote)?;
+                }
+                Ok(())
+            } else {
+                f.write_fmt(format_args!("\"{}\"", self.0))
             }
-            Ok(())
-        } else {
-            f.write_fmt(format_args!("\"{}\"", self.0))
         }
     }
 }
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+pub use std_impl::*;
 
 /// An item of the token stream
 ///
@@ -196,6 +194,8 @@ pub struct UnbalancedParenthesis;
 #[cfg(test)]
 mod tests {
     use super::RawLexeme;
+    extern crate std;
+    use std::string::ToString;
 
     mod format_raw_lexeme {
         use super::*;
@@ -220,26 +220,24 @@ mod tests {
 
     mod parse_raw_lexeme {
         use super::*;
-        use std::borrow::Cow;
 
         macro_rules! test_parse {
-            ($name:ident, $text:literal => $variant:ident($result:literal)) => {
+            ($name:ident, $text:literal => $result:expr) => {
                 #[test]
                 fn $name() {
                     let result = RawLexeme::new($text).parse_string();
-                    assert_eq!(result, Cow::Borrowed($result));
-                    assert!(matches!(result, Cow::$variant(_)));
+                    assert_eq!(result, $result);
                 }
             };
         }
 
-        test_parse!(empty, "" => Borrowed(""));
-        test_parse!(non_empty, "abc" => Borrowed("abc"));
-        test_parse!(quoted_empty_single, "''" => Owned(""));
-        test_parse!(quoted_empty_double, "\"\"" => Owned(""));
-        test_parse!(quoted_non_empty_single, "'abc \\\' def \\\" fgh'" => Owned("abc \' def \" fgh"));
-        test_parse!(quoted_non_empty_double, "\"abc \\\' def \\\" fgh\"" => Owned("abc \' def \" fgh"));
-        test_parse!(quoted_not_terminated_single, "'abc" => Owned("abc"));
-        test_parse!(quoted_not_terminated_double, "\"abc" => Owned("abc"));
+        test_parse!(empty, "" => "");
+        test_parse!(non_empty, "abc" => "abc");
+        test_parse!(quoted_empty_single, "''" => "");
+        test_parse!(quoted_empty_double, "\"\"" => "");
+        test_parse!(quoted_non_empty_single, "'abc \\\' def \\\" fgh'" => "abc \\\' def \\\" fgh");
+        test_parse!(quoted_non_empty_double, "\"abc \\\' def \\\" fgh\"" => "abc \\\' def \\\" fgh");
+        test_parse!(quoted_not_terminated_single, "'abc" => "abc");
+        test_parse!(quoted_not_terminated_double, "\"abc" => "abc");
     }
 }

@@ -1,24 +1,35 @@
 [package]
-name = "cmdparse"
-version = "0.1.1"
-authors = ["Vlad Poletaev <poletaev.vladislav@gmail.com>"]
+name = "kmdparse"
+version = "0.0.1"
+authors = [
+    "Vlad Poletaev <poletaev.vladislav@gmail.com>",
+    "Sunip K. Mukherjee <sunipkmukherjee@gmail.com>",
+]
 description = "Parsing user's commands into arbitrary Rust types"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/poletaevvlad/cmdparse"
-documentation = "https://docs.rs/cmdparse/"
-categories = ["parser-implementations"]
+repository = "https://github.com/sunipkm/kmdparse"
+documentation = "https://docs.rs/kmdparse/"
+categories = ["parser-implementations", "no-std"]
 readme = "README.md"
 
+[features]
+default = ["std"]
+std = []
+
 [dependencies]
-cmdparse-derive = { path = "./derive", version = "=0.1.1" }
+kmdparse-derive = { path = "./derive", version = "=0.1.1" }
 
 [dev-dependencies]
 tempdir = "0.3"
-
-# Example dependencies
 rustyline = "9.1.0"
-smallvec = "1.8.0"
+smallvec = "1.8"
 
 [workspace]
 members = ["derive", "derive-tests"]
+
+[package.metadata.docs.rs]
+# document all features
+all-features = true
+# defines the configuration attribute `docsrs`
+rustdoc-args = ["--cfg", "docsrs"]

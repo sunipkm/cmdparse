@@ -1,3 +1,3 @@
-# cmdparse-derive
+# kmdparse-derive
 
-Derive macro implementation for [`cmdparse`](https://crates.io/crates/cmdparse).
+Derive macro implementation for [`kmdparse`](https://crates.io/crates/kmdparse).

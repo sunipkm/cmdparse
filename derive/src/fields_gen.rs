@@ -29,7 +29,7 @@ impl<'a> FieldView<'a> {
                 let parse_ctx = ctx.parse_context_ident();
 
                 quote! {
-                    #position => match input.with_nested(|input| ::cmdparse::Parser::<#parse_ctx>::parse(&#parser_ident, input, ctx.clone())) {
+                    #position => match input.with_nested(|input| ::kmdparse::Parser::<#parse_ctx>::parse(&#parser_ident, input, ctx.clone())) {
                         Ok((result, remaining)) => {
                             input = remaining;
                             #var_ident = Some(result);
@@ -37,8 +37,8 @@ impl<'a> FieldView<'a> {
                             required_index += 1;
                             continue
                         }
-                        Err(error @ ::cmdparse::error::ParseFailure::Error(_)) => return Err(error),
-                        Err(::cmdparse::error::ParseFailure::Unrecognized(unrecognized)) => unrecognized,
+                        Err(error @ ::kmdparse::error::ParseFailure::Error(_)) => return Err(error),
+                        Err(::kmdparse::error::ParseFailure::Unrecognized(unrecognized)) => unrecognized,
                     }
                 }
             }
@@ -55,7 +55,7 @@ impl<'a> FieldView<'a> {
                 quote! {
                     #name => {
                         let (result, remaining) = unexpected.remaining().with_nested(|input| {
-                            ::cmdparse::Parser::<#parse_ctx>::parse(&#parser_ident, input, ctx.clone())
+                            ::kmdparse::Parser::<#parse_ctx>::parse(&#parser_ident, input, ctx.clone())
                         })?;
                         input = remaining;
                         #var_ident = Some(result);
@@ -156,13 +156,13 @@ pub(crate) fn gen_parse_struct(
                 #required_parsing
                 _ => match input.take() {
                     None | Some(Err(_)) => break,
-                    Some(Ok((::cmdparse::tokens::Token::Text(_), _))) => break,
-                    Some(Ok((token, remaining))) => ::cmdparse::error::UnrecognizedToken::new(token, remaining),
+                    Some(Ok((::kmdparse::tokens::Token::Text(_), _))) => break,
+                    Some(Ok((token, remaining))) => ::kmdparse::error::UnrecognizedToken::new(token, remaining),
                 }
             };
             match unexpected.token() {
-                ::cmdparse::tokens::Token::Text(_) => return Err(unexpected.into()),
-                ::cmdparse::tokens::Token::Attribute(attribute) => {
+                ::kmdparse::tokens::Token::Text(_) => return Err(unexpected.into()),
+                ::kmdparse::tokens::Token::Attribute(attribute) => {
                     let attribute = attribute.parse_string();
                     match ::std::borrow::Borrow::<str>::borrow(&attribute) {
                         #optional_parsing
