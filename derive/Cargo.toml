@@ -5,7 +5,7 @@ authors = ["Vlad Poletaev <poletaev.vladislav@gmail.com>"]
 description = "Derive macro implementation for kmdparse."
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/poletaevvlad/kmdparse"
+repository = "https://github.com/sunipkm/kmdparse"
 readme = "README.md"
 
 [lib]

@@ -1,4 +1,4 @@
-[![Github](https://img.shields.io/github/last-commit/poletaevvlad/kmdparse "Documentation")](https://github.com/poletaevvlad/kmdparse) [![MIT/Apache 2.0](https://img.shields.io/crates/l/kmdparse "MIT/Apache 2.0")](https://crates.io/crates/kmdparse) [![Crates.io](https://img.shields.io/crates/v/kmdparse "Crates.io")](https://crates.io/crates/kmdparse) [![Documentation](https://img.shields.io/docsrs/kmdparse "Documentation")](https://docs.rs/kmdparse)
+[![Github](https://img.shields.io/github/last-commit/sunipkm/kmdparse "Documentation")](https://github.com/sunipkm/kmdparse) [![MIT/Apache 2.0](https://img.shields.io/crates/l/kmdparse "MIT/Apache 2.0")](https://crates.io/crates/kmdparse) [![Crates.io](https://img.shields.io/crates/v/kmdparse "Crates.io")](https://crates.io/crates/kmdparse) [![Documentation](https://img.shields.io/docsrs/kmdparse "Documentation")](https://docs.rs/kmdparse)
 
 # {{crate}}
 
