@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/kmdparse/0.0.1")]
+#![doc(html_root_url = "https://docs.rs/kmdparse/0.0.2")]
 #![warn(missing_docs)]
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
