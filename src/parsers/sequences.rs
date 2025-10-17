@@ -22,6 +22,43 @@ pub trait ParsableCollection {
     fn append(&mut self, item: Self::Item);
 }
 
+#[derive(Debug, Clone, PartialEq, AsRef, AsMut)]
+/// Parser implementation for fixed-size arrays
+pub struct ParsableArray<T, const N: usize>(
+    #[as_mut(forward)]
+    #[as_ref(forward)]
+    pub [T; N], 
+    usize);
+
+impl<T, const N: usize> From<[T; N]> for ParsableArray<T, N> {
+    fn from(array: [T; N]) -> Self {
+        Self(array, N)
+    }
+}
+
+impl<T: Default + Copy, const N: usize> Default for ParsableArray<T, N> {
+    fn default() -> Self {
+        Self([T::default(); N], 0)
+    }
+}
+
+impl<T, const N: usize> ParsableCollection for ParsableArray<T, N> {
+    type Item = T;
+
+    fn append(&mut self, item: Self::Item) {
+        if self.1 < N {
+            self.0[self.1] = item;
+            self.1 += 1;
+        }
+    }
+}
+
+impl<Ctx: Clone, T: Parsable<Ctx> + Copy + Default, const N: usize> Parsable<Ctx>
+    for ParsableArray<T, N>
+{
+    type Parser = CollectionParser<Self, T::Parser>;
+}
+
 #[cfg(feature = "std")]
 pub mod std_collection_parser {
     //! Standard library collection parsers implementations
@@ -94,6 +131,7 @@ pub mod std_collection_parser {
         type Parser = TransformParser<T::Parser, T, Box<T>>;
     }
 }
+use derive_more::{AsMut, AsRef};
 #[cfg(feature = "std")]
 #[allow(unused_imports)]
 pub use std_collection_parser::*;
