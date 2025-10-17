@@ -164,7 +164,7 @@ pub(crate) fn gen_parse_struct(
                 ::kmdparse::tokens::Token::Text(_) => return Err(unexpected.into()),
                 ::kmdparse::tokens::Token::Attribute(attribute) => {
                     let attribute = attribute.parse_string();
-                    match ::std::borrow::Borrow::<str>::borrow(&attribute) {
+                    match ::core::borrow::Borrow::<str>::borrow(&attribute) {
                         #optional_parsing
                         _ if required_index >= #required_count => break,
                         _ if first_token => return Err(unexpected.into()),

@@ -69,7 +69,7 @@ pub(crate) fn gen_parse_enum(
             }
             Some(Ok((token @ ::kmdparse::tokens::Token::Text(text) , remaining))) => {
                 let text = text.parse_string();
-                match ::std::borrow::Borrow::<str>::borrow(&text) {
+                match ::core::borrow::Borrow::<str>::borrow(&text) {
                     #(#variants_parsing)*
                    _ => {
                         #(#transparent_parsed)*
