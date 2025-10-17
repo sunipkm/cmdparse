@@ -22,19 +22,6 @@ pub trait ParsableCollection {
     fn append(&mut self, item: Self::Item);
 }
 
-macro_rules! impl_parsable_collection {
-    ($ty:ty $(where T: $bound_1:ident $(+ $bound:ident)*)? { $append:item }) => {
-        impl<T $(: $bound_1 $(+ $bound)*)?> ParsableCollection for $ty {
-            type Item = T;
-            $append
-        }
-
-        impl<Ctx: Clone, T: Parsable<Ctx> $(+ $bound_1 $(+ $bound)*)?> Parsable<Ctx> for $ty {
-            type Parser = CollectionParser<Self, T::Parser>;
-        }
-    };
-}
-
 #[cfg(feature = "std")]
 pub mod std_collection_parser {
     //! Standard library collection parsers implementations
@@ -45,6 +32,19 @@ pub mod std_collection_parser {
     use std::collections::{BTreeSet, HashSet, LinkedList, VecDeque};
     use std::hash::Hash;
     use std::vec::Vec;
+
+    macro_rules! impl_parsable_collection {
+        ($ty:ty $(where T: $bound_1:ident $(+ $bound:ident)*)? { $append:item }) => {
+            impl<T $(: $bound_1 $(+ $bound)*)?> ParsableCollection for $ty {
+                type Item = T;
+                $append
+            }
+
+            impl<Ctx: Clone, T: Parsable<Ctx> $(+ $bound_1 $(+ $bound)*)?> Parsable<Ctx> for $ty {
+                type Parser = CollectionParser<Self, T::Parser>;
+            }
+        };
+    }
 
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl_parsable_collection! {Vec<T> {
