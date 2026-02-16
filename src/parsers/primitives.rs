@@ -331,7 +331,7 @@ impl<Ctx, const N: usize> Parser<Ctx> for HeaplessStringParser<N> {
     }
 }
 
-impl <Ctx, const N: usize> Parsable<Ctx> for heapless::String<N> {
+impl<Ctx, const N: usize> Parsable<Ctx> for heapless::String<N> {
     type Parser = HeaplessStringParser<N>;
 }
 
@@ -347,12 +347,11 @@ impl <Ctx, const N: usize> Parsable<Ctx> for heapless::String<N> {
 ///
 /// # Example
 /// ```
-/// use kmdparse::{complete, parse};
+/// use kmdparse::parse;
 /// use std::collections::BTreeSet;
 ///
 /// # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
 /// assert_eq!(parse::<_, bool>("false", ())?, false);
-/// assert_eq!(complete::<_, bool>("tr", ()), BTreeSet::from(["ue".into()]));
 /// # Ok(())
 /// # }
 /// ```

@@ -29,6 +29,7 @@ pub(crate) struct CodegenContext<'a> {
     pub(crate) context_type: Option<ContextType>,
     pub(crate) generics: &'a syn::Generics,
     pub(crate) parsers: LinkedHashMap<Parser<'a>, ParserIndex>,
+    pub(crate) attrs: Vec<syn::Attribute>,
 }
 
 impl<'a> CodegenContext<'a> {
@@ -39,6 +40,17 @@ impl<'a> CodegenContext<'a> {
             context_type: None,
             generics: &derive_input.generics,
             parsers: LinkedHashMap::new(),
+            attrs: derive_input
+                .attrs
+                .iter()
+                .filter(|&p| {
+                    p.path
+                        .get_ident()
+                        .map(|ident| ident == "doc" || ident == "cfg" || ident == "cfg_attr")
+                        .unwrap_or(false)
+                })
+                .cloned()
+                .collect(),
         }
     }
 
@@ -85,6 +97,7 @@ impl MockCodegenContext {
             context_type: None,
             generics: &self.generics,
             parsers: LinkedHashMap::new(),
+            attrs: vec![],
         }
     }
 }

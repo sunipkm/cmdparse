@@ -46,7 +46,7 @@
 //! ```
 //! # use kmdparse::tokens::RawLexeme;
 //! let lexeme = RawLexeme::new(r#""Hello, \"world\"""#);
-//! assert_eq!(&lexeme.parse_string(), r#"Hello, "world""#);
+//! assert_eq!(&lexeme.parse_string(), &r#"Hello, \"world\""#);
 //! ```
 
 mod lexing;

@@ -118,8 +118,10 @@ pub(crate) fn implementation(
     let ctx_generics = generics::context_usage(ctx);
     let trait_generics = generics::definition(ctx, true);
     let visibility_mod = ctx.visibility_mod;
+    let attrs = &ctx.attrs;
 
     quote! {
+        #(#attrs)*
         #[derive(Default)]
         #visibility_mod struct #parser_name;
 

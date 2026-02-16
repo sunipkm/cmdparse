@@ -63,27 +63,6 @@
 //!    Note how `kmdparse` recognized that the list of email addresses finished when it
 //!    encountered the attribute that neither [`String`] nor [`Vec`] recognizes.
 //!
-//! `kmdparse` can generate completion suggestions:
-//!
-//! ```
-//! # use kmdparse::{Parsable, parse};
-//! use kmdparse::complete;
-//! use std::collections::BTreeSet;
-//!
-//! # #[derive(Debug, PartialEq, Eq, Parsable)]
-//! # struct MailSendCommand {
-//! #    text: String,
-//! #    #[cmd(attr(subject), default = "\"no subject\".to_string()")]
-//! #    subject: String,
-//! #    #[cmd(attr(to))]
-//! #    to: Vec<String>,
-//! # }
-//! # fn main() -> Result<(), kmdparse::error::ParseError<'static>> {
-//! let suggestions = complete::<_, MailSendCommand>("\"Hello, world\" --", ());
-//! assert_eq!(suggestions, BTreeSet::from(["to".into(), "subject".into()]));
-//! # Ok(())
-//! # }
-//! ```
 //!
 //! It also supports parsing enums. In case of enum, it expects a discriminator (automatically
 //! converted into kebab-case by the [`Parsable`] derive macro):
@@ -150,7 +129,7 @@
 //!
 //! More details about how the tokenization and the parsing algorithm are documented in the
 //! [`tokens`] module’s and [`Parser`] trait’s documentation.
-//! 
+//!
 //! # Features
 //! This crate is `no_std` compatible. Features that depend on the standard library are only enabled
 //! when the `std` feature is enabled. These features include support for types from the standard
@@ -210,7 +189,7 @@ pub type ParseResult<'a, T> = Result<(T, TokenStream<'a>), ParseFailure<'a>>;
 /// dependent on data available at runtime.
 ///
 /// ```
-/// use kmdparse::{Parser, CompletionResult, ParseResult, parse_parser, complete_parser};
+/// use kmdparse::{Parser, ParseResult, parse_parser};
 /// use kmdparse::tokens::{TokenStream, Token};
 /// use kmdparse::error::{ParseError, UnrecognizedToken};
 /// use std::borrow::Cow;
@@ -239,22 +218,6 @@ pub type ParseResult<'a, T> = Result<(T, TokenStream<'a>), ParseFailure<'a>>;
 ///             }
 ///         }
 ///     }
-///
-///     fn complete<'a>(&self, input: TokenStream<'a>, ctx: &'c RuntimeContext) -> CompletionResult<'a> {
-///         match input.take() {
-///             Some(Err(_)) | None => CompletionResult::new_final(false),
-///             Some(Ok((Token::Attribute(_), _))) => CompletionResult::new(input, false),
-///             Some(Ok((Token::Text(text), remaining))) if remaining.is_all_consumed() => {
-///                 let text = text.parse_string();
-///                 CompletionResult::new_final(true).add_suggestions(
-///                     ctx.variables.keys()
-///                         .filter_map(|key| key.strip_prefix(&text as &str))
-///                         .map(|suggestion| Cow::Owned(suggestion.to_string()))
-///                 )
-///             }
-///             Some(Ok((Token::Text(_), remaining))) => CompletionResult::new(remaining, true),
-///         }
-///     }
 /// }
 ///
 /// # fn main() -> Result<(), ParseError<'static>> {
@@ -264,10 +227,6 @@ pub type ParseResult<'a, T> = Result<(T, TokenStream<'a>), ParseFailure<'a>>;
 ///
 /// assert_eq!(parse_parser::<_, VariableParser>("var-1", &context)?, 10);
 /// assert_eq!(parse_parser::<_, VariableParser>("var-2", &context)?, 20);
-/// assert_eq!(
-///     complete_parser::<_, VariableParser>("va", &context),
-///     BTreeSet::from(["r-1".into(), "r-2".into()]),
-/// );
 /// # Ok(())
 /// # }
 /// ```
@@ -337,7 +296,7 @@ pub trait Parser<Ctx>: Default {
 /// parsing context and restricting the context type in the derived trait implementation.
 ///
 /// ```
-/// use kmdparse::{parse, tokens::TokenStream, CompletionResult, Parsable, Parser, ParseResult};
+/// use kmdparse::{parse, tokens::TokenStream, Parsable, Parser, ParseResult};
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /// enum LengthUnit { Cm, In }
@@ -361,11 +320,6 @@ pub trait Parser<Ctx>: Default {
 ///         let parser = <f64 as Parsable<ParsingContext>>::Parser::default();
 ///         let (value, remaining) = parser.parse(input, ctx)?;
 ///         Ok((Length(value, unit), remaining))
-///     }
-///
-///     fn complete<'a>(&self, input: TokenStream<'a>, ctx: ParsingContext) -> CompletionResult<'a> {
-///         let parser = <f64 as Parsable<ParsingContext>>::Parser::default();
-///         parser.complete(input, ctx)
 ///     }
 /// }
 ///

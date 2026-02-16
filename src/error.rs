@@ -133,7 +133,7 @@ pub mod std_impl {
                 }
                 ParseErrorVariant::TokenRequired => f.write_str("not enough tokens")?,
                 ParseErrorVariant::UnbalancedParenthesis => {
-                    f.write_str("unbalanced parenthesis")?
+                    f.write_str("unbalanced parenthesis")?;
                 }
                 ParseErrorVariant::Custom(message) => f.write_str(message)?,
             }

@@ -1,11 +1,11 @@
 [package]
 name = "kmdparse"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
     "Vlad Poletaev <poletaev.vladislav@gmail.com>",
     "Sunip K. Mukherjee <sunipkmukherjee@gmail.com>",
 ]
-description = "Parsing user's commands into arbitrary Rust types"
+description = "Parsing user's commands into arbitrary Rust types, in no-std environments and with support for context-sensitive parsing and completion."
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/sunipkm/kmdparse"
@@ -19,7 +19,7 @@ std = []
 
 [dependencies]
 heapless = "0.9"
-kmdparse-derive = { path = "./derive", version = "=0.0.2" }
+kmdparse-derive = { path = "./derive", version = "=0.0.3" }
 
 [dev-dependencies]
 tempdir = "0.3"
